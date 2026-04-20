@@ -1552,7 +1552,7 @@ const PANIM={lastMove:0,facing:1,lastAtk:0,lastHurt:0,stepPhase:0,stepDir:0};
 // Joystick persistent state (survives re-renders)
 let JOY={timer:null,dx:0,dy:0,active:false};
 function joyStop(){if(JOY.timer){clearInterval(JOY.timer);JOY.timer=null;}JOY.dx=0;JOY.dy=0;JOY.active=false;}
-function joyStart(dx,dy){joyStop();JOY.dx=dx;JOY.dy=dy;JOY.active=true;if(dx||dy){dispatch({type:'MOVE',dx,dy});JOY.timer=setInterval(()=>{if(JOY.dx||JOY.dy)dispatch({type:'MOVE',dx:JOY.dx,dy:JOY.dy});},210);}}
+function joyStart(dx,dy){joyStop();JOY.dx=dx;JOY.dy=dy;JOY.active=true;if(dx||dy){dispatch({type:'MOVE',dx,dy});JOY.timer=setInterval(()=>{if(JOY.dx||JOY.dy)dispatch({type:'MOVE',dx:JOY.dx,dy:JOY.dy});},180);}}
 
 function drawLargeMap(ctx,dg,pos,floor){
   const PAD=12;
@@ -1778,97 +1778,98 @@ ctrl.insertBefore(audBtns,invBtn);
 root.appendChild(ctrl);
 
 // ── CANVAS OVERLAY D-PAD: floats over lower-left of game canvas ──────────────
-// ── Draggable Virtual Joystick ──────────────────────────────────────────────
-const JSIZE=130;   // outer ring diameter
-const TSIZE=52;    // thumb diameter
-const JMAX=42;     // max thumb travel from center
-const JDEAD=0.22;  // dead zone (fraction of JMAX)
-const JREPEAT=210; // ms between repeated moves while held
+// ── Virtual Joystick — right side, mid-screen, no drag handle ───────────────
+const JSIZE=130, TSIZE=52, JMAX=42, JDEAD=0.22, JREPEAT=160;
 
 const joyWrap=document.createElement('div');
 joyWrap.style.cssText='position:absolute;z-index:15;pointer-events:auto;user-select:none;touch-action:none;';
 
-// Load saved position
-let joyPos;
-try{joyPos=JSON.parse(localStorage.getItem('dd_dpad_pos')||'null');}catch(e){}
-const cwW2=cvWrap.offsetWidth||380,cwH2=cvWrap.offsetHeight||500;
-const JW=JSIZE+4, JH=JSIZE+30; // total wrap size including handle
-if(!joyPos||joyPos.x===undefined){joyPos={x:10,y:cwH2-JH-12};}
-joyPos.x=Math.max(0,Math.min(cwW2-JW,joyPos.x));
-joyPos.y=Math.max(0,Math.min(cwH2-JH,joyPos.y));
-joyWrap.style.left=joyPos.x+'px';
-joyWrap.style.top=joyPos.y+'px';
+// Fixed position: right edge, vertically centered
+const JW=JSIZE+4, JH=JSIZE+4;
+const posRight = (cvWrap.offsetWidth||380) - JW - 8;
+const posTop   = Math.round(((cvWrap.offsetHeight||500) - JH) / 2);
+joyWrap.style.left = posRight + 'px';
+joyWrap.style.top  = posTop  + 'px';
 
-// Drag handle
-const jHandle=document.createElement('div');
-jHandle.style.cssText=`width:${JW}px;height:26px;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;border-radius:10px 10px 0 0;background:rgba(20,20,55,0.72);border:1.5px solid rgba(80,80,160,0.5);border-bottom:none;`;
-jHandle.innerHTML='<span style="color:rgba(140,140,200,0.7);font-size:13px;letter-spacing:3px;">⠿ MOVE ⠿</span>';
-
-let hDragging=false,hSX=0,hSY=0,hSL=0,hST=0;
-jHandle.addEventListener('pointerdown',e=>{
-  e.preventDefault();e.stopPropagation();
-  hDragging=true;jHandle.style.cursor='grabbing';
-  jHandle.setPointerCapture(e.pointerId);
-  hSX=e.clientX;hSY=e.clientY;
-  hSL=parseInt(joyWrap.style.left)||0;hST=parseInt(joyWrap.style.top)||0;
-});
-jHandle.addEventListener('pointermove',e=>{
-  if(!hDragging)return;e.preventDefault();
-  const rect=cvWrap.getBoundingClientRect();
-  const nx=Math.max(0,Math.min(rect.width-JW, hSL+(e.clientX-hSX)));
-  const ny=Math.max(0,Math.min(rect.height-JH,hST+(e.clientY-hSY)));
-  joyWrap.style.left=nx+'px';joyWrap.style.top=ny+'px';
-});
-jHandle.addEventListener('pointerup',e=>{
-  hDragging=false;jHandle.style.cursor='grab';
-  try{localStorage.setItem('dd_dpad_pos',JSON.stringify({x:parseInt(joyWrap.style.left)||0,y:parseInt(joyWrap.style.top)||0}));}catch(e2){}
-});
-jHandle.addEventListener('pointercancel',()=>{hDragging=false;jHandle.style.cursor='grab';});
-joyWrap.appendChild(jHandle);
-
-// Joystick canvas
+// Joystick canvas only — no handle
 const jCanvas=document.createElement('canvas');
-jCanvas.width=JW;jCanvas.height=JSIZE+4;
-jCanvas.style.cssText=`width:${JW}px;height:${JSIZE+4}px;display:block;touch-action:none;`;
+jCanvas.width=JW; jCanvas.height=JH;
+jCanvas.style.cssText=`width:${JW}px;height:${JH}px;display:block;touch-action:none;`;
 joyWrap.appendChild(jCanvas);
 cvWrap.appendChild(joyWrap);
 
-// Draw joystick state
-const jCx=JW/2,jCy=(JSIZE+4)/2;
-let thumbX=jCx,thumbY=jCy,jActive=false;
+// Draw
+const jCx=JW/2, jCy=JH/2;
+let thumbX=jCx, thumbY=jCy, jActive=false;
 
 function drawJoystick(){
   const jCtx=jCanvas.getContext('2d');
-  jCtx.clearRect(0,0,JW,JSIZE+4);
-
+  jCtx.clearRect(0,0,JW,JH);
   // Outer ring
   jCtx.beginPath();jCtx.arc(jCx,jCy,JSIZE/2,0,Math.PI*2);
-  jCtx.fillStyle='rgba(10,10,35,0.70)';jCtx.fill();
-  jCtx.strokeStyle=jActive?'rgba(100,120,220,0.85)':'rgba(60,70,140,0.60)';
+  jCtx.fillStyle='rgba(10,10,35,0.68)';jCtx.fill();
+  jCtx.strokeStyle=jActive?'rgba(100,120,220,0.9)':'rgba(60,70,140,0.55)';
   jCtx.lineWidth=2;jCtx.stroke();
-
-  // Direction quadrant indicators (subtle)
-  jCtx.fillStyle='rgba(80,90,180,0.18)';
+  // Subtle direction dots
+  jCtx.fillStyle='rgba(80,90,180,0.20)';
   [[0,-1],[0,1],[-1,0],[1,0]].forEach(([dx,dy])=>{
-    jCtx.beginPath();
-    jCtx.arc(jCx+dx*(JSIZE/2-12),jCy+dy*(JSIZE/2-12),7,0,Math.PI*2);
-    jCtx.fill();
+    jCtx.beginPath();jCtx.arc(jCx+dx*(JSIZE/2-13),jCy+dy*(JSIZE/2-13),6,0,Math.PI*2);jCtx.fill();
   });
-
   // Thumb shadow
   jCtx.beginPath();jCtx.arc(thumbX+2,thumbY+2,TSIZE/2,0,Math.PI*2);
-  jCtx.fillStyle='rgba(0,0,0,0.4)';jCtx.fill();
-
-  // Thumb
-  const tGrad=jCtx.createRadialGradient(thumbX-6,thumbY-6,2,thumbX,thumbY,TSIZE/2);
-  tGrad.addColorStop(0,jActive?'rgba(140,160,255,0.95)':'rgba(90,100,200,0.90)');
-  tGrad.addColorStop(1,jActive?'rgba(50,70,200,0.85)':'rgba(30,40,120,0.80)');
+  jCtx.fillStyle='rgba(0,0,0,0.35)';jCtx.fill();
+  // Thumb gradient
+  const tg=jCtx.createRadialGradient(thumbX-6,thumbY-6,2,thumbX,thumbY,TSIZE/2);
+  tg.addColorStop(0,jActive?'rgba(150,170,255,0.95)':'rgba(90,100,200,0.90)');
+  tg.addColorStop(1,jActive?'rgba(50,70,210,0.88)':'rgba(30,40,120,0.80)');
   jCtx.beginPath();jCtx.arc(thumbX,thumbY,TSIZE/2,0,Math.PI*2);
-  jCtx.fillStyle=tGrad;jCtx.fill();
-  jCtx.strokeStyle=jActive?'rgba(180,200,255,0.8)':'rgba(100,120,220,0.6)';
+  jCtx.fillStyle=tg;jCtx.fill();
+  jCtx.strokeStyle=jActive?'rgba(180,200,255,0.85)':'rgba(100,120,220,0.55)';
   jCtx.lineWidth=1.5;jCtx.stroke();
 }
 drawJoystick();
+
+function getDir(ox,oy){
+  const d=Math.sqrt(ox*ox+oy*oy);
+  if(d<JMAX*JDEAD)return{dx:0,dy:0};
+  return Math.abs(ox)>=Math.abs(oy)?{dx:ox>0?1:-1,dy:0}:{dx:0,dy:oy>0?1:-1};
+}
+
+// Kill any timer from previous render, wire new canvas to global JOY
+joyStop();
+
+jCanvas.addEventListener('pointerdown',e=>{
+  e.preventDefault();e.stopPropagation();
+  jActive=true;
+  const r=jCanvas.getBoundingClientRect();
+  const ox=Math.max(-JMAX,Math.min(JMAX,(e.clientX-r.left)-jCx));
+  const oy=Math.max(-JMAX,Math.min(JMAX,(e.clientY-r.top)-jCy));
+  thumbX=jCx+ox; thumbY=jCy+oy;
+  const{dx,dy}=getDir(ox,oy);
+  joyStart(dx,dy);
+  drawJoystick();
+});
+
+jCanvas.addEventListener('pointermove',e=>{
+  if(!jActive)return;
+  e.preventDefault();
+  const r=jCanvas.getBoundingClientRect();
+  const rawX=(e.clientX-r.left)-jCx, rawY=(e.clientY-r.top)-jCy;
+  const dist=Math.sqrt(rawX*rawX+rawY*rawY);
+  const scale=Math.min(1,JMAX/Math.max(dist,1));
+  const ox=rawX*scale, oy=rawY*scale;
+  thumbX=jCx+ox; thumbY=jCy+oy;
+  const{dx,dy}=getDir(ox,oy);
+  if(dx!==JOY.dx||dy!==JOY.dy){
+    if(dx===0&&dy===0){joyStop();}
+    else{joyStart(dx,dy);}
+  }
+  drawJoystick();
+});
+
+const jRelease=()=>{jActive=false;thumbX=jCx;thumbY=jCy;joyStop();drawJoystick();};
+jCanvas.addEventListener('pointerup',jRelease);
+jCanvas.addEventListener('pointercancel',jRelease);
 
 // Movement — uses global JOY state so intervals survive re-renders
 function getDirection(ox,oy){
@@ -1882,7 +1883,6 @@ joyStop();
 
 jCanvas.addEventListener('pointerdown',e=>{
   e.preventDefault();e.stopPropagation();
-  jCanvas.setPointerCapture(e.pointerId);
   jActive=true;
   const r=jCanvas.getBoundingClientRect();
   const ox=Math.max(-JMAX,Math.min(JMAX,(e.clientX-r.left)-jCx));
@@ -1910,9 +1910,7 @@ jCanvas.addEventListener('pointermove',e=>{
   drawJoystick();
 });
 
-const jRelease=()=>{jActive=false;thumbX=jCx;thumbY=jCy;joyStop();drawJoystick();};
-jCanvas.addEventListener('pointerup',jRelease);
-jCanvas.addEventListener('pointercancel',jRelease);
+
 }
 function getItemIcon(it){
   const icons={weapon:'⚔',armor:'🛡',helmet:'⛑',boots:'👟',gloves:'🥊',ring:'💍',amulet:'📿',consumable:'🧪'};
