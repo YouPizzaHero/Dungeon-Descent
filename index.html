@@ -13,8 +13,11 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 .dpad-btn:active{background:#1e1e4a;}
 .inv-item{padding:7px 9px;margin-bottom:5px;border-radius:6px;background:#0e0e1e;border:1px solid #1a1a30;cursor:pointer;}
 .inv-item.sel{background:#161628;border-color:#333;}
-</style></head><body><div id="root"></div>
+</style></head>
+<body><div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.2/nipplejs.min.js"></script>
 <script>
+
 const TS=38,DW=58,DH=58,VR=7;
 const T={VOID:0,WALL:1,FLOOR:2,CHEST:3,STAIRS:4,MERCHANT:5,NPC:6};
 const V={DARK:0,SEEN:1,LIT:2};
@@ -472,9 +475,75 @@ function initGame(name,cls){const cd=CLS[cls],dg=mkDungeon(1),st=mkStory();const
     sq:[{t:STORY_FLOORS[1].title,tx:STORY_FLOORS[1].text(p.cls,name)}],log:['Adventure begins! WASD/Arrows=move | Q=skill | I=inventory'],turn:0,floats:[]};}
 function updateVis(dg,pos,vr){const vis=dg.vis.map(r=>[...r]);for(let y=0;y<DH;y++)for(let x=0;x<DW;x++)if(vis[y][x]===V.LIT)vis[y][x]=V.SEEN;for(let dy=-vr;dy<=vr;dy++)for(let dx=-vr;dx<=vr;dx++){const nx=pos.x+dx,ny=pos.y+dy;if(nx>=0&&nx<DW&&ny>=0&&ny<DH&&Math.sqrt(dx*dx+dy*dy)<=vr)vis[ny][nx]=V.LIT;}return{...dg,vis};}
 let GS={scr:S.TITLE};
+// ── NippleJS joystick — init once when game starts ─────────────────────────
+let _nippleManager=null;
+function initJoystick(){
+  if(_nippleManager)return;
+  // Create persistent zone div sitting over the canvas wrapper
+  const zone=document.createElement('div');
+  zone.id='joy-zone';
+  zone.style.cssText='position:fixed;right:0;top:0;width:160px;height:100%;z-index:100;pointer-events:auto;';
+  document.body.appendChild(zone);
+
+  _nippleManager=nipplejs.create({
+    zone,
+    mode:'static',
+    position:{right:'70px',top:'50%'},
+    color:{
+      front:'rgba(100,120,255,0.88)',
+      back:'rgba(10,10,40,0.65)'
+    },
+    size:120,
+    threshold:0.1,
+    restJoystick:true,
+    restOpacity:0.6,
+    fadeTime:100,
+  });
+
+  let nippleDx=0,nippleDy=0;
+
+  _nippleManager.on('move',(_,data)=>{
+    if(GS.scr!==S.GAME)return;
+    const deg=data.angle.degree; // 0=right,90=up,180=left,270=down
+    let dx=0,dy=0;
+    if(deg>=315||deg<45){dx=1;}
+    else if(deg>=45&&deg<135){dy=-1;}
+    else if(deg>=135&&deg<225){dx=-1;}
+    else{dy=1;}
+    if(dx!==nippleDx||dy!==nippleDy){
+      nippleDx=dx;nippleDy=dy;
+      joyStop();
+      if(dx||dy){
+        dispatch({type:'MOVE',dx,dy});
+        JOY.dx=dx;JOY.dy=dy;JOY.active=true;
+        JOY.timer=setInterval(()=>{
+          if(GS.scr===S.GAME&&(JOY.dx||JOY.dy))dispatch({type:'MOVE',dx:JOY.dx,dy:JOY.dy});
+        },180);
+      }
+    }
+  });
+
+  _nippleManager.on('end',()=>{
+    nippleDx=0;nippleDy=0;
+    joyStop();
+  });
+
+  // Show/hide zone based on screen
+  function updateZoneVisibility(){
+    zone.style.display=(GS&&GS.scr===S.GAME)?'block':'none';
+  }
+  updateZoneVisibility();
+  // Re-check visibility after each dispatch
+  const _origUpdateVis=updateZoneVisibility;
+  window._joyUpdateVis=updateZoneVisibility;
+}
+
 function dispatch(action){
   const prev=GS;
   GS=reduce(GS,action);
+
+  // Show/hide joystick zone
+  if(window._joyUpdateVis)window._joyUpdateVis();
 
   // ── Audio triggers ─────────────────────────────────────────────────────
   if(_audSettings.sfx){
@@ -1605,7 +1674,7 @@ function drawLargeMap(ctx,dg,pos,floor){
 }
 
 function render(){const root=document.getElementById('root');if(!root)return;root.innerHTML='';root.style.cssText='display:flex;flex-direction:column;height:100vh;width:100%;overflow:hidden;background:#07070f;';const st=GS;if(st.scr===S.TITLE)renderTitle(root);else if(st.scr===S.STORY)renderStory(root,st);else if(st.scr===S.GAME)renderGame(root,st);else if(st.scr===S.INV)renderInv(root,st);else if(st.scr===S.MERCHANT)renderMerchant(root,st);else if(st.scr===S.TALENT)renderTalent(root,st);else if(st.scr===S.DEATH)renderDeath(root,st);else if(st.scr===S.STAIRS)renderStairs(root,st);}
-function renderTitle(root){const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px 16px;gap:12px;overflow-y:auto;';let selCls='doom',pName='';div.innerHTML='<div style="text-align:center;"><div style="font-size:24px;font-weight:bold;color:#FFD700;letter-spacing:2px;">DUNGEON DESCENT</div><div style="font-size:9px;color:#444;letter-spacing:3px;margin-top:3px;">ENHANCED EDITION</div></div><div style="width:100%;max-width:320px;"><div style="font-size:11px;color:#666;margin-bottom:5px;">Your name:</div><input id="pname" type="text" maxlength="20" placeholder="Hero name..." style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:9px 11px;color:#fff;font-size:14px;font-family:monospace;"></div><div style="width:100%;max-width:320px;"><div style="font-size:11px;color:#666;margin-bottom:6px;">Choose class:</div><div id="cls-list"></div></div><button id="start-btn" style="padding:11px 36px;background:#FFD700;color:#000;border:none;border-radius:7px;font-size:14px;font-weight:bold;cursor:pointer;font-family:monospace;">BEGIN DESCENT</button><div style="font-size:9px;color:#333;text-align:center;line-height:1.7;">Move: Arrows/WASD | Skill: Q | Inventory: I | Wait: Space</div>';root.appendChild(div);const ni=div.querySelector('#pname');ni.addEventListener('input',e=>{pName=e.target.value;});const cl=div.querySelector('#cls-list');const cards={};Object.entries(CLS).forEach(([k,c])=>{const card=document.createElement('div');card.style.cssText=`border:2px solid ${k==='doom'?c.col:'#333'};border-radius:7px;padding:9px 12px;margin-bottom:7px;cursor:pointer;background:${k==='doom'?c.col+'22':'#111'};`;card.innerHTML=`<div style="font-size:13px;font-weight:bold;color:${c.col};">${c.n}</div><div style="font-size:10px;color:#777;margin-top:2px;">${c.desc}</div>`;card.addEventListener('click',()=>{selCls=k;Object.entries(cards).forEach(([ck,cv])=>{const cc=CLS[ck];cv.style.borderColor=ck===k?cc.col:'#333';cv.style.background=ck===k?cc.col+'22':'#111';});});cards[k]=card;cl.appendChild(card);});div.querySelector('#start-btn').addEventListener('click',()=>{if((pName||'').trim()){AUD.ctx();if(_audSettings.music)AUD.playMusic('explore');dispatch({type:'START',name:pName.trim(),cls:selCls});}});}
+function renderTitle(root){const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px 16px;gap:12px;overflow-y:auto;';let selCls='doom',pName='';div.innerHTML='<div style="text-align:center;"><div style="font-size:24px;font-weight:bold;color:#FFD700;letter-spacing:2px;">DUNGEON DESCENT</div><div style="font-size:9px;color:#444;letter-spacing:3px;margin-top:3px;">ENHANCED EDITION</div></div><div style="width:100%;max-width:320px;"><div style="font-size:11px;color:#666;margin-bottom:5px;">Your name:</div><input id="pname" type="text" maxlength="20" placeholder="Hero name..." style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:9px 11px;color:#fff;font-size:14px;font-family:monospace;"></div><div style="width:100%;max-width:320px;"><div style="font-size:11px;color:#666;margin-bottom:6px;">Choose class:</div><div id="cls-list"></div></div><button id="start-btn" style="padding:11px 36px;background:#FFD700;color:#000;border:none;border-radius:7px;font-size:14px;font-weight:bold;cursor:pointer;font-family:monospace;">BEGIN DESCENT</button><div style="font-size:9px;color:#333;text-align:center;line-height:1.7;">Move: Arrows/WASD | Skill: Q | Inventory: I | Wait: Space</div>';root.appendChild(div);const ni=div.querySelector('#pname');ni.addEventListener('input',e=>{pName=e.target.value;});const cl=div.querySelector('#cls-list');const cards={};Object.entries(CLS).forEach(([k,c])=>{const card=document.createElement('div');card.style.cssText=`border:2px solid ${k==='doom'?c.col:'#333'};border-radius:7px;padding:9px 12px;margin-bottom:7px;cursor:pointer;background:${k==='doom'?c.col+'22':'#111'};`;card.innerHTML=`<div style="font-size:13px;font-weight:bold;color:${c.col};">${c.n}</div><div style="font-size:10px;color:#777;margin-top:2px;">${c.desc}</div>`;card.addEventListener('click',()=>{selCls=k;Object.entries(cards).forEach(([ck,cv])=>{const cc=CLS[ck];cv.style.borderColor=ck===k?cc.col:'#333';cv.style.background=ck===k?cc.col+'22':'#111';});});cards[k]=card;cl.appendChild(card);});div.querySelector('#start-btn').addEventListener('click',()=>{if((pName||'').trim()){AUD.ctx();if(_audSettings.music)AUD.playMusic('explore');dispatch({type:'START',name:pName.trim(),cls:selCls});initJoystick();}});}
 function renderStory(root,st){const ev=st.sq[0];if(!ev)return;
 const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;padding:28px 20px;background:#050510;';div.innerHTML=`<div style="max-width:320px;text-align:center;"><div style="font-size:9px;color:${ev.isNpc?'#44AA44':'#333'};letter-spacing:4px;margin-bottom:12px;">${ev.isNpc?'DIALOGUE':'CHAPTER'}</div>${ev.npcIcon?`<div style='font-size:36px;margin-bottom:8px;'>${ev.npcIcon}</div>`:''}<div style="font-size:18px;color:#FFD700;font-weight:bold;margin-bottom:16px;line-height:1.3;">${ev.t}</div><div style="font-size:12px;line-height:1.9;color:#AAA;margin-bottom:28px;">${ev.tx}</div><button id="cont" style="padding:10px 28px;background:#FFD700;color:#000;border:none;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;font-family:monospace;">CONTINUE</button></div>`;root.appendChild(div);const ev2=GS.sq[0];
   // Quest offer button
@@ -1777,152 +1846,7 @@ audBtns.style.cssText='display:flex;gap:4px;align-items:center;';
 ctrl.insertBefore(audBtns,invBtn);
 root.appendChild(ctrl);
 
-// ── CANVAS OVERLAY D-PAD: floats over lower-left of game canvas ──────────────
-// ── Virtual Joystick — right side, mid-screen, no drag handle ───────────────
-const JSIZE=130, TSIZE=52, JMAX=42, JDEAD=0.22, JREPEAT=160;
-
-const joyWrap=document.createElement('div');
-joyWrap.style.cssText='position:absolute;z-index:15;pointer-events:auto;user-select:none;touch-action:none;';
-
-// Fixed position: right edge, vertically centered
-const JW=JSIZE+4, JH=JSIZE+4;
-const posRight = (cvWrap.offsetWidth||380) - JW - 8;
-const posTop   = Math.round(((cvWrap.offsetHeight||500) - JH) / 2);
-joyWrap.style.left = posRight + 'px';
-joyWrap.style.top  = posTop  + 'px';
-
-// Joystick canvas only — no handle
-const jCanvas=document.createElement('canvas');
-jCanvas.width=JW; jCanvas.height=JH;
-jCanvas.style.cssText=`width:${JW}px;height:${JH}px;display:block;touch-action:none;`;
-joyWrap.appendChild(jCanvas);
-cvWrap.appendChild(joyWrap);
-
-// Draw
-const jCx=JW/2, jCy=JH/2;
-let thumbX=jCx, thumbY=jCy, jActive=false;
-
-function drawJoystick(){
-  const jCtx=jCanvas.getContext('2d');
-  jCtx.clearRect(0,0,JW,JH);
-  // Outer ring
-  jCtx.beginPath();jCtx.arc(jCx,jCy,JSIZE/2,0,Math.PI*2);
-  jCtx.fillStyle='rgba(10,10,35,0.68)';jCtx.fill();
-  jCtx.strokeStyle=jActive?'rgba(100,120,220,0.9)':'rgba(60,70,140,0.55)';
-  jCtx.lineWidth=2;jCtx.stroke();
-  // Subtle direction dots
-  jCtx.fillStyle='rgba(80,90,180,0.20)';
-  [[0,-1],[0,1],[-1,0],[1,0]].forEach(([dx,dy])=>{
-    jCtx.beginPath();jCtx.arc(jCx+dx*(JSIZE/2-13),jCy+dy*(JSIZE/2-13),6,0,Math.PI*2);jCtx.fill();
-  });
-  // Thumb shadow
-  jCtx.beginPath();jCtx.arc(thumbX+2,thumbY+2,TSIZE/2,0,Math.PI*2);
-  jCtx.fillStyle='rgba(0,0,0,0.35)';jCtx.fill();
-  // Thumb gradient
-  const tg=jCtx.createRadialGradient(thumbX-6,thumbY-6,2,thumbX,thumbY,TSIZE/2);
-  tg.addColorStop(0,jActive?'rgba(150,170,255,0.95)':'rgba(90,100,200,0.90)');
-  tg.addColorStop(1,jActive?'rgba(50,70,210,0.88)':'rgba(30,40,120,0.80)');
-  jCtx.beginPath();jCtx.arc(thumbX,thumbY,TSIZE/2,0,Math.PI*2);
-  jCtx.fillStyle=tg;jCtx.fill();
-  jCtx.strokeStyle=jActive?'rgba(180,200,255,0.85)':'rgba(100,120,220,0.55)';
-  jCtx.lineWidth=1.5;jCtx.stroke();
-}
-drawJoystick();
-
-function getDir(ox,oy){
-  const d=Math.sqrt(ox*ox+oy*oy);
-  if(d<JMAX*JDEAD)return{dx:0,dy:0};
-  return Math.abs(ox)>=Math.abs(oy)?{dx:ox>0?1:-1,dy:0}:{dx:0,dy:oy>0?1:-1};
-}
-
-// Kill any timer from previous render, wire new canvas to global JOY
-joyStop();
-
-jCanvas.addEventListener('pointerdown',e=>{
-  e.preventDefault();e.stopPropagation();
-  jActive=true;
-  const r=jCanvas.getBoundingClientRect();
-  const ox=Math.max(-JMAX,Math.min(JMAX,(e.clientX-r.left)-jCx));
-  const oy=Math.max(-JMAX,Math.min(JMAX,(e.clientY-r.top)-jCy));
-  thumbX=jCx+ox; thumbY=jCy+oy;
-  const{dx,dy}=getDir(ox,oy);
-  joyStart(dx,dy);
-  drawJoystick();
-});
-
-jCanvas.addEventListener('pointermove',e=>{
-  if(!jActive)return;
-  e.preventDefault();
-  const r=jCanvas.getBoundingClientRect();
-  const rawX=(e.clientX-r.left)-jCx, rawY=(e.clientY-r.top)-jCy;
-  const dist=Math.sqrt(rawX*rawX+rawY*rawY);
-  const scale=Math.min(1,JMAX/Math.max(dist,1));
-  const ox=rawX*scale, oy=rawY*scale;
-  thumbX=jCx+ox; thumbY=jCy+oy;
-  const{dx,dy}=getDir(ox,oy);
-  if(dx!==JOY.dx||dy!==JOY.dy){
-    if(dx===0&&dy===0){joyStop();}
-    else{joyStart(dx,dy);}
-  }
-  drawJoystick();
-});
-
-const jRelease=()=>{jActive=false;thumbX=jCx;thumbY=jCy;joyStop();drawJoystick();};
-jCanvas.addEventListener('pointerup',jRelease);
-jCanvas.addEventListener('pointercancel',jRelease);
-
-// Movement — uses global JOY state so intervals survive re-renders
-function getDirection(ox,oy){
-  const dist=Math.sqrt(ox*ox+oy*oy);
-  if(dist<JMAX*JDEAD)return{dx:0,dy:0};
-  return Math.abs(ox)>=Math.abs(oy)?{dx:ox>0?1:-1,dy:0}:{dx:0,dy:oy>0?1:-1};
-}
-
-// Stop any old timer from previous render
-joyStop();
-
-jCanvas.addEventListener('pointerdown',e=>{
-  e.preventDefault();e.stopPropagation();
-  jActive=true;
-  const r=jCanvas.getBoundingClientRect();
-  const ox=Math.max(-JMAX,Math.min(JMAX,(e.clientX-r.left)-jCx));
-  const oy=Math.max(-JMAX,Math.min(JMAX,(e.clientY-r.top)-jCy));
-  thumbX=jCx+ox;thumbY=jCy+oy;
-  const{dx,dy}=getDirection(ox,oy);
-  joyStart(dx,dy);
-  drawJoystick();
-});
-
-jCanvas.addEventListener('pointermove',e=>{
-  if(!jActive)return;
-  e.preventDefault();
-  const r=jCanvas.getBoundingClientRect();
-  const rawX=(e.clientX-r.left)-jCx,rawY=(e.clientY-r.top)-jCy;
-  const dist=Math.sqrt(rawX*rawX+rawY*rawY);
-  const scale=Math.min(1,JMAX/Math.max(dist,1));
-  const ox=rawX*scale,oy=rawY*scale;
-  thumbX=jCx+ox;thumbY=jCy+oy;
-  const{dx,dy}=getDirection(ox,oy);
-  if(dx!==JOY.dx||dy!==JOY.dy){
-    if(dx===0&&dy===0){joyStop();}
-    else{joyStart(dx,dy);}
-  }
-  drawJoystick();
-});
-
-
-}
-function getItemIcon(it){
-  const icons={weapon:'⚔',armor:'🛡',helmet:'⛑',boots:'👟',gloves:'🥊',ring:'💍',amulet:'📿',consumable:'🧪'};
-  return icons[it.type]||'?';
-}
-function getStatLines(it){
-  return[it.atk?`ATK +${it.atk}`:null,it.def?`DEF +${it.def}`:null,it.mgk?`MGK +${it.mgk}`:null,
-    it.str?`STR +${it.str}`:null,it.dex?`DEX +${it.dex}`:null,it.vit?`VIT +${it.vit}`:null,
-    it.int?`INT +${it.int}`:null,it.luk?`LUK +${it.luk}`:null,
-    it.mhp?`MaxHP +${it.mhp}`:null,it.hp?`Heals ${it.hp}`:null,
-    it.ls?`Lifesteal ${Math.round(it.ls*100)}%`:null,it.crit?`Crit +${Math.round(it.crit*100)}%`:null,
-  ].filter(Boolean);
+// ── NippleJS joystick handled by initJoystick() ─────────────────────────────
 }
 function getItemIcon(it){
   return{weapon:'⚔',armor:'🛡',helmet:'⛑',boots:'👟',gloves:'🥊',ring:'💍',amulet:'📿',consumable:'🧪'}[it.type]||'?';
@@ -2296,4 +2220,5 @@ setInterval(()=>{if(GS.scr===S.GAME)dispatch({type:'ENEMY_TICK'});},400);
   requestAnimationFrame(flickerLoop);
 })();
 render();
+
 </script></body></html>
