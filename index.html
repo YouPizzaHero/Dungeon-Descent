@@ -16,22 +16,202 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 </style></head><body><div id="root"></div>
 <script>
 const TS=38,DW=58,DH=58,VR=7;
-const T={VOID:0,WALL:1,FLOOR:2,CHEST:3,STAIRS:4,MERCHANT:5};
+const T={VOID:0,WALL:1,FLOOR:2,CHEST:3,STAIRS:4,MERCHANT:5,NPC:6};
 const V={DARK:0,SEEN:1,LIT:2};
-const S={TITLE:'title',GAME:'game',STORY:'story',INV:'inv',DEATH:'death',MERCHANT:'merchant',TALENT:'talent'};
+const S={TITLE:'title',GAME:'game',STORY:'story',INV:'inv',DEATH:'death',MERCHANT:'merchant',TALENT:'talent',STAIRS:'stairs'};
 const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const cdist=(a,b)=>Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y));
-const SVIL=['Ashenveil','Thornhaven','Mirefall','Duskwood','Grimshire','Ravenmoor','Coldwater'];
-const SDUN=['the Sunken Citadel','the Abyssal Crypt','Shadowmere Keep','the Forgotten Vault','the Cursed Catacombs'];
-const SART=['Shard of Dawn','Void Crystal','Heart of the Abyss','Eternal Flame','The Bloodstone'];
-const SVLN=['the Lich King Malachar','the Demon Prince Vorak','the Fallen Oracle Seris','the Dread Queen Xara'];
-const SINS=['Turn back — death awaits below','The seventh seal was broken','Blood must be spilled to unseal the gate'];
-const SEV=[d=>`A dying adventurer whispers: "Beware ${d.vl}..."`,()=>'Strange runes glow. You feel watched.',()=>`An inscription: "${pick(SINS)}"`,()=>'The air grows colder. Something stirs.',d=>`A journal: "The ${d.art} must be real..."`,()=>'Distant screaming echoes. Then silence.'];
-const CHTITLES=['The Descent Begins','Whispers in the Dark','The Ancient Evil Stirs','Depths of Madness','The Final Reckoning'];
-const CHTEXTS=[(d,n,c)=>`The village of ${d.vg} is shrouded in shadow. You — ${n} the ${c} — descend alone into ${d.dn}. Recover the ${d.art} and destroy ${d.vl}.`,d=>`${d.vl} knows you are here. The ${d.art} calls from below.`,d=>`Halfway to the heart of ${d.dn}. ${d.vl} has sent champions ahead.`,d=>`The boundary between world and nightmare dissolves. ${d.vl} waits.`,d=>`You stand at the threshold of ${d.vl}'s sanctum. One way forward. No way back.`];
-function mkStory(){return{vg:pick(SVIL),dn:pick(SDUN),art:pick(SART),vl:pick(SVLN)};}
+// ═══════════════════════════════════════════════════════════════
+// DUNGEON DESCENT — CHARACTER-SPECIFIC STORY
+// "The Sinkhole" — Four stories, one dungeon
+// ═══════════════════════════════════════════════════════════════
+
+// cls-specific text helper
+const ST = (doom, camp, tact, anime) => (cls) =>
+  ({doom, camp, tact, anime})[cls] || doom;
+
+const STORY_FLOORS = {
+  1:{title:"The Wrong Address",text:(cls,n)=>({
+    doom:`${n}. Delivering since he was nineteen. Tonight he gets a call: 1108 Blackwater Lane, large pepperoni, extra cheese. The address doesn't exist. He goes anyway — because that's what you do. The ground opens. He falls.\n\nHe's still on the clock.`,
+    camp:`${n}. His food channel has 40,000 subscribers and a sponsorship that pays about as well as his graphic design gigs don't. Tonight he's chasing a Reddit tip: "secret underground restaurant, unreal seafood." He brings his camera. The ground opens.\n\nThe shot is incredible. He keeps filming.`,
+    tact:`${n}. His drone detects a thermal anomaly below a parking lot. He moves closer to investigate — scientifically. The drone dips into a crack in the earth. He leans over to look. The ground opens.\n\nHe has seventeen tabs open. Twelve of them are seafood recipes.`,
+    anime:`${n}. He was supposed to meet someone from his VRchat server — a person he's only ever known as @dungeon_cat. The meetup coordinates led here. The ground opened.\n\nHe's not sure if this counts as a date.`
+  }[cls]||'')},
+  3:{title:"First Impressions",text:ST(
+    `The dungeon smells like stone and old secrets. Doom notes: no GPS, no address marker, no way to rate this location on the app. He makes a note to leave one star. Then reconsiders — the structural integrity is actually solid. Three stars.`,
+    `Camp's first footage: torchlit corridors, impossibly old carvings, a skeleton that waves at him. He checks the shot. Perfect lighting. Genuinely perfect. He whispers "this is the video" and means it completely.`,
+    `Tact's drone returns data: the dungeon maintains a precise 68°F throughout. Ideal for aged cheese. Suboptimal for most combat. He begins a spreadsheet. Column A: Floor. Column B: Temperature. Column C: Culinary Potential.`,
+    `Anime sends a message to @dungeon_cat: "I think I'm in your dungeon." Three dots appear. Then: "lol yeah sorry. it's complicated." The reply is in perfect English. The sender is apparently a skeleton named Gerald.`
+  )},
+  5:{title:"Something Built This",text:ST(
+    `Doom has delivered to rough neighborhoods, gated communities, one active protest, and a boat in the middle of a lake. He's never felt watched the way he feels watched here. The walls are carved. Something made them. Something that cared about doing it right.\n\n"I respect the craftsmanship," he says to nobody in particular. The walls hum.`,
+    `The carvings repeat in patterns Camp can't decode, but his camera can. When he plays back the footage, frame by frame, some symbols look like menu items. Others look like warnings. One looks unmistakably like a Yelp star rating.\n\n"This dungeon," he says slowly, "has been trying to go viral for centuries."`,
+    `The symbols are a notation system. Tact realizes this around Floor 4 and spends the next corridor walking slowly, eyes moving across the walls, building a Rosetta Stone in his notes app. By Floor 5 he has a working theory: the carvings are a recipe book. An enormous, architectural recipe book.\n\n"Huh," he says.`,
+    `Gerald (Floor 3, skeleton, reasonably chill) explains the dungeon through a series of gestures and rib-rattles that Anime has been learning to interpret. The dungeon isn't a prison or a trap. It's more like a house that hasn't had guests in a very long time. It pulled people in because it was lonely.\n\n"Same," Anime says. Gerald rattles sympathetically.`
+  )},
+  8:{title:"Personal Effects",text:ST(
+    `On a makeshift camp near Floor 7, Doom finds a Domino's delivery bag. His hands go still. He recognizes the route tag. It's Karen's — his ex, also a driver, last seen three weeks ago. The receipt is pinned to the wall. Her handwriting. Delivered: pepperoni, extra cheese. The customer signed it: THE DEEP ONE. She got a five-star tip.`,
+    `Camp's phone buzzes. Forty notifications from his last video. He's at 800,000 subscribers now. The comment that stops him: "My son watches your channel every day. He says you make food look like an adventure. He just got diagnosed with something serious. Thank you for the videos." Camp stares at the screen for a long time in the dark.`,
+    `Tact finds the hot spring on Floor 7. He stands over it, measuring temperature with his phone camera (thermal imaging app, $4.99, worth every cent). 184°F. Mineral-rich. He pulls from his bag: a collapsible pot, Zatarain's, three sausage links he has apparently been carrying this entire time. "I planned for this," he says to no one. He absolutely did not plan for this.`,
+    `@dungeon_cat (Gerald) sends Anime something through the dungeon's inexplicable one-bar signal: a photograph. A room, Floor 12, that looks exactly like Anime's apartment. Same furniture. Same VRchat rig. Same bag of ketchup chips on the chair. "did u put that there" Anime types. Three dots. Then: "the dungeon did. it looked you up." Anime is not sure how to feel about the dungeon having his home address.`
+  )},
+  10:{title:"The Watcher",text:ST(
+    `Doom finds a security camera, mounted to a dungeon wall, pointing directly at the staircase. It's a Ring camera. Modern. He checks the app on his phone. The camera is registered to an account called @TheDeepOne. He requests access. He is approved immediately. The feed shows him standing here, looking at the camera. He waves. The camera tilts slightly. A greeting.`,
+    `Camp reviews his footage and sees something he missed filming: a hooded figure watching them from behind a collapsed archway. Not a monster. A person. He plays it back six times. The figure doesn't move. Just watches. Camp uploads a still to his community tab with the caption: "does anyone know who this is?" Three hours later: 40,000 responses. None of them helpful. One is from the hooded figure's account, which has zero posts and was created today. The reply: 👍`,
+    `Tact's drone returns footage from the lower floors. He watches it alone. The corridors below are wider. More organized. The carvings shift from recipe notation to something else — dimensional diagrams. Engineering. Whatever is at the bottom of this place was built around something very large and very deliberate. He saves the footage. Sends it to three geology departments. None of them respond yet. They will.`,
+    `Gerald takes Anime to a room that shouldn't exist on Floor 9: a small library. Books in seventeen languages. One bookshelf is entirely VRchat strategy guides, published between 2018 and last year. Anime pulls one out. Inside the front cover, in cramped handwriting: *If you're reading this, you went too deep. The dungeon collects things it finds interesting. You are interesting. Congratulations. Good luck.* It's signed with a cat paw print.`
+  )},
+  13:{title:"The Signal",text:ST(
+    `Karen is alive. Doom gets a Venmo notification: $847.00 from @KarenDeliversToo, memo: "IOU for the rescue, probably." He's been delivering things to people his whole life. He has never before been the thing someone was waiting for. He walks faster.`,
+    `Camp's channel hits one million subscribers while he's fighting a troll on Floor 12. He doesn't notice until Floor 13. He sits down against the wall and just — stops. One million people found him. Chose to stay. He built something real without meaning to, while he was busy meaning everything else. He gets up. Keeps going. Films the next corridor like it matters.`,
+    `The dungeon sends Tact a message through temperature fluctuations he's now fluent in reading: it knows what he's looking for. Not the recipes — what he's actually looking for. The thing you find when you make a perfect meal for someone and watch them eat it. The dungeon can give him that. If he goes deeper.\n\nTact adjusts his glasses. Keeps walking.`,
+    `@dungeon_cat (Gerald) is real. The account was created nine hundred years ago — Anime can see the join date in some cached version of a social media platform that doesn't exist anymore. Gerald was a person. Became a skeleton. Kept the account. Has been following Anime on VRchat since 2021.\n\n"you've been following me for three years?" Anime messages. Three dots. Then: "you made good cat content."`
+  )},
+  15:{title:"The Voice",text:ST(
+    `The dungeon speaks to Doom specifically: *You carry something for someone else. You always have. When do you put it down and pick up something for yourself?*\n\nDoom thinks about the receipt in his pocket. The order slip with his handwriting. Delivered: truth.\n\n"When I find it," he says.\n\nThe dungeon hums. *You're getting closer.*`,
+    `The dungeon speaks to Camp: *You film everything. You have been filming since you picked up your first phone. But you haven't been in a single frame since you started. Why?*\n\nCamp thinks about the subscriber who wrote about their sick son. Thinks about cooking with his grandmother as a kid. Thinks about the first video he made for nobody.\n\n"Because I was scared," he says.\n\n*I know,* the dungeon says. *I've been scared too. For nine hundred years. It doesn't stop you.*`,
+    `The dungeon speaks to Tact: *You study everything. You have catalogued 341 encounters, 14 sausage samples, 3 geological anomalies, and one perfect meal. But you haven't told anyone why the meal mattered.*\n\nTact is quiet for a while.\n\n"My dad died last year," he says finally. "He made gumbo every Sunday. Floor 7's crawfish tasted like his."\n\nThe dungeon says nothing. The walls grow a little warmer.`,
+    `The dungeon speaks to Anime: *You came looking for @dungeon_cat. You found Gerald. Are you disappointed?*\n\n"No," Anime says immediately. Too fast. Then, more honestly: "A little. I thought — I don't know what I thought."\n\n*You thought someone online could be what you needed in person. And now you have found that Gerald is real and you are not disappointed. Why?*\n\nAnime thinks about it. "Because he's actually here."\n\n*Yes,* the dungeon says. *That is the whole thing.*`
+  )},
+  18:{title:"Karen",text:ST(
+    `She's sitting cross-legged eating a seafood boil that smells incredible. "Hey, Doom."\n\n"Karen. What the—"\n\n"I've been here three weeks," she says. "The tipping is insane and the crab is a ten out of ten." She looks up. "You came for me?"\n\nHe hadn't thought about it that way. He just kept moving toward the address.\n\n"Yeah," he says. "I did."\n\nShe smiles. Passes him the extra ranch.`,
+    `Camp sits with Karen and forgets to film for twenty minutes. She asks about his channel — has seen some videos, likes the way he talks about food like it's a person. He talks about the brand deals, the subscriber count, the sponsorship. She asks what his favorite video is. He says the one he made for his mom's birthday, that got 300 views, that she watched six times.\n\n"Make more of those," Karen says.\n\n"Those don't pay."\n\n"Make them anyway."`,
+    `Tact asks Karen about the crab immediately. She describes it — the texture, the temperature, the slight mineral quality from the spring water. He takes notes. She watches him take notes. "You're very serious about this," she says.\n\n"My dad was serious about food," Tact says, not looking up. "He said food is how you say 'I love you' when you don't know how else to say it."\n\nKaren is quiet. Then: "The crab is on Floor 18. He would have liked it."`,
+    `Karen knows Gerald. "Yeah, he's great," she says. "Very good listener." She shows Anime the rib-rattling language she's learned — apparently there are regional dialects. Gerald, it turns out, was from Lyon. He makes a sound that means *it's good to see you* specifically when Anime appears, a combination he uses for no one else.\n\n"He was waiting for you," Karen says.\n\nAnime looks at Gerald. Gerald rattles.\n\n"What did he say?" Anime asks.\n\n"He said you're even better in person."`
+  )},
+  20:{title:"What It's Really About",text:ST(
+    `Doom finds the order slip. His handwriting. His employee number. Delivered: TRUTH. He turns it over. In his own writing, somehow: *You deliver things to doors you never walk through.*\n\nHe stands in a dungeon corridor holding a receipt that shouldn't exist and thinks about every door he's stopped at. Every apartment. Every house. Every business. All those lives glimpsed for thirty seconds while someone signed for a pizza.\n\nHe folds the receipt. Puts it in his pocket. Keeps walking.`,
+    `Camp runs out of memory on his phone. He has to delete videos to keep filming — and he can't delete the subscriber's message, can't delete his mom's birthday video, can't delete the footage of Gerald waving. So he deletes the brand deal pitch deck. Then the agency's contact info. Then three months of content calendars.\n\nHe keeps the footage that matters.\n\nHis phone is 4% full.\n\nHe feels lighter than he has in years.`,
+    `Tact's spreadsheet has 847 rows. He looks at it and realizes he has been collecting data about this dungeon the way he collects data about everything: to keep a safe distance. To understand it without being changed by it. He closes the app.\n\nHe opens his notes instead. Types: *Things I want to tell my dad.* Stares at the blank page for a long time.\n\nThen he starts writing.`,
+    `Anime texts his mom. Not about the dungeon — about her. Asks how she's doing. She sends back a voice message: nine minutes long, entirely in Tagalog, about the garden she's started and the neighbor's cat and a dream she had. He listens to the whole thing in a carved chamber 20 floors underground.\n\nHe calls her back.\n\nFor the first time since he left for university, he doesn't hang up after three minutes.`
+  )},
+  23:{title:"The Side Quest",text:ST(
+    `Doom gets a delivery notification. A new order. From inside the dungeon. The pickup address is Floor 21. The delivery address is Floor 23. The item: "One (1) Truth, Extra Warm." He picks it up — a carved stone with a symbol that glows when he holds it. He delivers it to the exact alcove on Floor 23. A door opens that wasn't there before. Behind it: a shortcut, a chest, and a note that says GREAT SERVICE. 5 STARS.\n\nHe is still on the clock. He has never been better at this job.`,
+    `Camp tries to post a video and the upload fails. Again. Again. On the fourth attempt it goes through — but the video that posts isn't what he recorded. It's older footage, something from three years ago: him making tamales with his grandmother, laughing at something she said, completely unaware of the camera. 200,000 views in an hour. The comments are not about the food.\n\nHe watches the video twice. Calls his grandmother. She picks up on the first ring.`,
+    `The dungeon presents Tact with a puzzle: a sealed door, ancient, covered in the same culinary notation he's been studying. He translates it over forty minutes. It's a recipe — a specific one, with exact temperatures and timing. He doesn't have the ingredients. But he has his drone, a thermal spring two floors up, and approximately the right sausage content. He improvises. The door opens. Inside: the best meal he has ever eaten, laid out like it was waiting for him.\n\nHe cries. He's done crying about it. He's going to open a restaurant.`,
+    `Gerald takes Anime to a room with a wall-sized mural: hundreds of people who came before, rendered in pigment that shouldn't still exist. Some made it to the bottom. Some turned back. Some stayed. Gerald points to one figure near the bottom of the mural — small, round, with what might be a hoodie and what is definitely cat ears.\n\n"That's me?" Anime asks.\n\nGerald rattles. *You haven't been painted yet,* he says, in the language Anime is still learning. *That space is saved.*`
+  )},
+  25:{title:"Halfway",text:ST(
+    `Floor 25. Doom checks his phone. He has been on the clock for eleven days. His manager has called 84 times. His rating has somehow gone up — customers he delivered to before he fell in keep leaving late reviews. One of them wrote: "Arrived exactly when he said he would. Always does." He looks at that review for a long time.\n\nHe marks the current order as "in transit."\n\nHe keeps moving.`,
+    `Camp's last video — filmed entirely on the go, one-handed, between fights — has 8 million views. The title he gave it in thirty seconds: "i found something real down here (it's not what you think)." The thumbnail is accidentally perfect. He didn't mean to make his best video. He was just paying attention.\n\nHe thinks about that. Floor 25, halfway to the bottom, he thinks about what it means to make something when you stop trying.`,
+    `Floor 25. Tact's notes app: 94 pages. His paper on thermal culinary dynamics has been cited by two separate academics who found it in pre-print. He hasn't responded to their emails. He's been busy being the kind of person his data was always about. There's a difference, he's learning, between understanding something and living it.\n\nHe makes a note. Column A: Floor 25. Column B: 68°F. Column C: Perfect. Column D (new): Worth it.`,
+    `Floor 25. Anime has spoken more words in twelve days than in the preceding six months. With Gerald, with Karen, with the others, with the dungeon itself. He has opinions. Shares them. Was right about the Wi-Fi. Was right about Gerald. Told someone a true thing that needed saying and did not apologize for it.\n\nStat gained: +3 to actually being a person in the world.\n\nGerald rattles, which means *I told you so,* which is the most affectionate thing a skeleton can say.`
+  )},
+  28:{title:"The Crisis",text:ST(
+    `Doom's delivery bag rips. The thermal pouch, the one that's kept his last pizza warm for eleven days of dungeon, finally gives. He stands holding the two pieces and stares at them for a long time.\n\nKaren finds him there. "It's just a bag."\n\n"It's the job," he says.\n\nShe looks at him carefully. "Is it still the job you want?"\n\nHe doesn't answer. But he puts the bag down. Carries the pizza in his hands the rest of the way. It doesn't need to be warm anymore. He's almost there.`,
+    `Camp's camera battery dies on Floor 27. The real one, this time — no backup, no USB-C port that fits, nothing. He sits in the dark for a while. Without the camera he is just a person in a dungeon. He thinks about the video he can't film. The way the light looks here. The sound the walls make.\n\nHe realizes he has been memorizing it. Storing it somewhere the camera never could.\n\nHe picks up Anime's phone. Starts filming again. But differently — slower. Less coverage. Only the parts that matter.`,
+    `Tact's drone battery drops to 4% on Floor 27. Critical. He has been using drones to extend his reach his entire life — to see farther, measure better, stay one step removed. Without it he has to walk into the rooms himself. Stand in the space. Feel the temperature on his skin instead of reading it on a screen.\n\nIt's warmer than the numbers suggested.\n\nEverything is.`,
+    `Anime's phone dies on Floor 27. No more @dungeon_cat. No more VRchat. No more internet between him and the world. He sits with Gerald in the quiet and realizes he doesn't know what to do when he can't be somewhere else.\n\nThen he realizes he doesn't need to be somewhere else.\n\nGerald puts a radius bone on his shoulder. The gesture means *you're okay.*\n\nHe is okay.`
+  )},
+  30:{title:"What's at the Bottom",text:ST(
+    `Tact shows them the drone footage. A door. City-block-sized. Surrounded by creatures that aren't fighting — waiting. Doom looks at it for a long time. The door has no handle. Just a slot, sized for a piece of paper. He reaches into his pocket and touches the receipt.\n\n"We're the delivery," Tact says.\n\nDoom nods. He's been the delivery his whole life. He's never before been delivering something that mattered this much.`,
+    `The door in the footage is surrounded by symbols Camp now recognizes — the same notation from the walls, but assembled differently. Not a recipe. A review. The dungeon has been reviewing itself for nine hundred years, cataloguing what worked and what didn't, what it loved and what it lost. Nine hundred years of content. And it needs someone to read it.\n\nCamp thinks about his grandmother's recipe box. Dog-eared, stained, full of her handwriting.\n\n"Okay," he says. "I'll read it."`,
+    `The door is an engineering problem. Tact can see that immediately — the mechanism, the counterweight system, the material stress points. He also recognizes the slot: sized for a specific object. He looks at the receipt for the dungeon's "dinner" that he signed when the last meal appeared. His handwriting. His name. A key that doesn't look like a key.\n\nHe folds it carefully. Puts it in his shirt pocket, next to his heart, where his dad used to keep things that mattered.`,
+    `Gerald goes quiet when Anime shows him the footage. Quiet in a way that means something specific — not the comfortable quiet, not the thoughtful quiet. The waiting quiet. The one that means *this is the thing I've been trying to tell you.*\n\n"You knew about the door," Anime says.\n\nGerald rattles. *I've been here nine hundred years,* he says in the language Anime now understands. *Of course I knew. I was waiting for the right person to open it.*\n\n"Why me?"\n\nGerald rattles the thing that means *you asked why. Everyone else just knocked.*`
+  )},
+  33:{title:"What Home Feels Like",text:ST(
+    `The dungeon shows Doom something on Floor 32: a loading dock. Nondescript. Fluorescent lights. A break room with a microwave and someone's forgotten lunch in the fridge. A time clock. His employee number on it. He stands in this room that is somehow more familiar than anything he's seen in weeks and understands something: he has been going to work every day to avoid going home. He has been delivering things because receiving something felt too uncertain.\n\nThe time clock is running.\n\nHe punches out.`,
+    `The dungeon builds Camp a kitchen on Floor 32. Not a restaurant kitchen — his grandmother's kitchen. The one on Calle Miraflores with the yellow tiles and the window that stuck and the pot of beans that was always on. He stands in the doorway and breathes.\n\nHe goes in. Opens the cupboards. Everything is there.\n\nHe makes tortillas. Doesn't film it. Eats them standing at the counter.\n\nThey taste right.`,
+    `The dungeon puts Tact's dad's gumbo in a pot on the stove of Floor 32. He smells it before he sees it. The exact smell — not close, not approximate. Exact. He stands in the archway and shakes. Then he goes in and sits at the table and eats all of it and sits very still for a long time afterward.\n\nHe opens his notes app. Reads what he wrote on Floor 20. *Things I want to tell my dad.* It's eleven pages now.\n\nHe adds a line: *I made it to the bottom.*`,
+    `The dungeon makes Anime's room on Floor 32. He's seen it before in the footage — but being there is different. Nova is on the chair. He picks her up. She headbutts his chin. He sits in his own chair, in his own room, 32 floors underground, holding his cat, and for the first time understands what he came down here for: not a person, not Wi-Fi, not an adventure. Just proof that the world is stranger and warmer than you think it is from a screen.\n\nNova purrs. The dungeon hums the same frequency.\n\nHe holds his cat for a long time.`
+  )},
+  35:{title:"The Real Thing",text:ST(
+    `Karen finds Doom on Floor 34 reading the receipt. She sits next to him without asking. Eventually he tells her what it says. She listens. When he's done she says: "I waited three extra weeks at Floor 18 before I kept going." He looks at her. "Why?" She shrugs. "Because I thought you might come." He doesn't say anything for a while. Then: "I'm here." She nods. "I know." They get up and keep moving, and this time they walk at the same pace.`,
+    `Camp calls his mom on Floor 34. Not a text — a call. She asks why he's crying. He says he's not. She says she can hear it. He says he saw her in some footage. She asks which footage. He describes it — the tamales, the laugh, three years ago. She says that was a good day. He says every day with her was a good day, he just didn't film the ones that mattered. She's quiet. Then: "Come home when this is done." He says he will. He means it completely.`,
+    `On Floor 34 Tact opens his email and responds to one geology professor. Two sentences: "I have 94 pages of field notes and footage of a sub-terrestrial thermal system that will redefine your models. I'd like to talk." He hits send. Then he opens a new document: RESTAURANT PROPOSAL. Types: *Small place. Eight tables. Seasonal menu. Everything sourced well. Named for my dad.* He saves it. It's the most important spreadsheet he's ever made.`,
+    `Anime texts his mom on Floor 34. Not about anything specific — just: "I miss you." She responds immediately with three paragraphs about her week. He reads every word. Responds with questions. She sends a voice memo. He listens. He sends one back.\n\nHe has been unreachable for two weeks. His mom was not worried. "I knew you'd find something good," she says in the voice memo. "You always do. You just don't notice."\n\nGerald rattles. *See?* it means.`
+  )},
+  38:{title:"The Choice",text:ST(
+    `The dungeon tells Doom there's a way out. He can leave. No consequences, no penalty, just up and out and back to 1108 Blackwater Lane and the rest of his life. He stands in the corridor a long time. Karen is ahead somewhere. The receipt is in his pocket. He has never not made a delivery.\n\n"I'm finishing this," he says.\n\nThe dungeon hums. *I know. I just wanted you to choose it.*`,
+    `The dungeon tells Camp there's a way out. He thinks about the brand deals he hasn't responded to, the content calendar he deleted, the 11 million subscribers waiting for him. He thinks about his grandmother's kitchen on Floor 32. He thinks about what he made when he stopped trying.\n\nHe turns his phone camera around. Records himself.\n\n"We're finishing this," he says to the lens. Pauses. "Hi. I'm Camp. I make food videos. This is the one I'll remember."`,
+    `The dungeon tells Tact there's a way out. He calculates the probability of finding what's at the bottom versus the cost of leaving. But numbers aren't really the point anymore. He thinks about his dad's gumbo. About the thing you find when you make a perfect meal and watch someone eat it. About eight tables and a seasonal menu.\n\n"I need to see the bottom," he says. "For the notes."\n\nHe smiles when he says it. The notes aren't why.`,
+    `The dungeon tells Anime there's a way out. Gerald goes very still. Anime looks at him. "Are you coming?" Gerald rattles — the complicated one, the one that means something about being made of the dungeon now, about not being able to leave, about it being fine.\n\n"Then I'm going to the bottom," Anime says. "So I can tell you what's there."\n\nGerald rattles the thing that means *I know you will.*\n\nAnime has never been so sure of anything in his life.`
+  )},
+  40:{title:"What's Sleeping",text:ST(
+    `The ancient thing at the bottom dreamed the dungeon into existence. The dungeon is its dream. Doom thinks about this and realizes: he's been inside someone else's dream his whole career. Every house he's delivered to — someone's dream. Every apartment. Every business. He's spent twenty years touching the edges of other people's lives without entering them.\n\nHe's not the deliveryman anymore.\n\nHe's in the dream.`,
+    `The ancient thing's dream has been documenting itself for centuries — every creature, every corridor, every visitor. An archive. Camp walks through it and understands: he's not the first person to try to tell this story. But he might be the first with 11 million people watching. The dungeon didn't pull him in because he had a camera. It pulled him in because he knew how to make people care.\n\n"What do you want me to tell them?" he asks the walls.\n\nThe walls show him.`,
+    `The ancient thing dreamed the dungeon. But Tact notices something the others don't: the dream has been getting more detailed over time. More precise. Better seasoned, metaphorically and literally. A nine-hundred-year refinement process. He thinks about his proposal. Eight tables. Seasonal menu. The discipline of doing one thing until it's right.\n\n"You've been practicing," he tells the walls.\n\nThe temperature rises two degrees. Confirmation.`,
+    `The ancient thing dreamed Gerald into existence. And Gerald dreamed @dungeon_cat into existence — a persona, a signal, a way to reach someone on the surface who might understand. Who might come. Who might ask *why* instead of just running.\n\n"You made Gerald to find someone like me," Anime says to the wall.\n\nThe wall glows.\n\n"Gerald isn't just your messenger. He's your friend."\n\nThe wall glows brighter.\n\n"He's going to be okay when we open the door?"\n\nA long pause. Then: the warmest glow yet.`
+  )},
+  43:{title:"Almost There",text:ST(
+    `Karen and Doom sit together in the quiet of Floor 42. She tells him why she left: not because he was always delivering somewhere else, but because she knew he wanted to be. That he was always mid-route. That she loved him most in those thirty seconds at a door.\n\n"I'm not mid-route anymore," he says.\n\nShe looks at him carefully. "No," she says. "You're not."\n\nShe takes his hand.\n\nHe holds it like it's the most important delivery he's ever made.`,
+    `Camp reviews everything he's filmed. 38 hours of footage. He knows exactly which 47 minutes he'll use — not for views, not for an algorithm. For his grandmother. For the subscriber's son. For anyone who has ever looked at food and felt something they couldn't name. He knows what the video is called. He knew on Floor 3. He just needed to earn it.\n\nHe writes the title in his notes: *What I Found When I Stopped Looking.*`,
+    `Tact calls the geology professor back — actually calls, voice, phone, uncomfortable. He describes the dungeon. The thermal system. The culinary precision. The door at the bottom. The professor is quiet for a long time. Then: "What do you need?" Tact thinks about it. "A postdoc position and kitchen access." The professor says yes. Tact saves his notes app, all 97 pages, and calls it a field report.\n\nHis dad would have laughed. In the good way.`,
+    `Anime writes Gerald a letter. Old-fashioned — he finds a piece of material in the dungeon that works like paper, a mineral deposit that works like ink. He writes everything: about his apartment, about VRchat, about why he was lonely, about what changed. About how he came looking for something online and found something real. He gives it to Gerald. Gerald holds it very carefully with both hands. Makes a sound Anime doesn't recognize.\n\n"What does that mean?" Anime asks.\n\n"Thank you," Karen translates from across the corridor. "It's the first time he's said it in nine hundred years."`
+  )},
+  45:{title:"The Last Night",text:ST(
+    `The dungeon makes dinner. For Doom: a pepperoni pizza, hot, cut in six slices, exactly right. He stares at it. The last time someone made him food was — he can't remember. He's been the one delivering. He sits on the warm stone and eats it slowly and lets it be good.\n\nKaren sits next to him.\n\n"What do you want to do," she asks, "after?"\n\nHe thinks about the time clock he punched out on Floor 32.\n\n"Something I choose," he says.`,
+    `The dungeon makes dinner for Camp: a full taqueria spread, every component perfect, warm tortillas and three salsas and something that smells like his grandmother's kitchen on the best days. He films none of it. He eats all of it. He talks to the others about food — not as content, just as the thing it is: the way people say *I'm glad you're here* without saying anything at all.\n\nHe realizes the dungeon has been saying that to all of them the whole time.\n\nHe's going to put that in the video.`,
+    `The dungeon makes Tact a seafood boil. Every component flawless. Crawfish, crab, shrimp, sausage — real sausage, the good kind, perfectly seasoned. He eats it and takes no notes. Just eats it. Feels the temperature on his hands and the weight of the bowl and the sound of the others talking.\n\nHe thinks about eight tables and a seasonal menu and what he's going to name it.\n\nSomething his dad would recognize from across a room.`,
+    `The dungeon makes Anime ketchup chips and a warm blanket that smells like Nova. He wraps up and sits with Gerald and the others and just exists in the room for a while — not on his phone, not in a headset, not somewhere else. Just here. The dungeon hums.\n\n"Do you think Gerald will be okay?" he asks.\n\nKaren says yes. Camp says definitely. Doom says the dungeon takes care of its own.\n\nGerald rattles. Anime knows this one by heart now: *I've been okay for nine hundred years. You showed up. Now I'm more than okay.*`
+  )},
+  48:{title:"The Last Question",text:ST(
+    `*Why did you keep going?* the dungeon asks Doom.\n\nHe thinks about the receipt. About Karen. About every door he stopped at and didn't enter.\n\n"Because I finally had somewhere to arrive," he says.`,
+    `*Why did you keep going?* the dungeon asks Camp.\n\nHe thinks about the footage he didn't delete. About his grandmother's kitchen. About 11 million people he's never met who stayed.\n\n"Because someone was watching," he says. "And I wanted to show them something real."`,
+    `*Why did you keep going?* the dungeon asks Tact.\n\nHe thinks about his dad's gumbo. About 97 pages of notes. About eight tables.\n\n"Because I finally understood what I was studying," he says.`,
+    `*Why did you keep going?* the dungeon asks Anime.\n\nHe thinks about Gerald. About his mom's voice memo. About being in the room instead of somewhere else.\n\n"Because Gerald is here," he says. "And I didn't want to miss what happened next."\n\nGerald rattles. The dungeon glows.\n\n*That,* it says, *is a good enough reason.*`
+  )},
+  50:{title:"The Bottom",text:ST(
+    `The door. A slot, sized for paper. Doom reaches into his pocket and takes out the crumpled receipt. Karen is smiling. He slides it in. The door opens — not violently, not dramatically. Like a delivery. Like it was expected. Light comes through, warm as a front porch bulb.\n\nOn the other side: stairs going up. Going somewhere.\n\nThe ancient thing exhales.\n\nKaren takes his hand. He holds it. They step through together.\n\n"Late," she says, glancing at his phone.\n\n"First time," he says.\n\nThey climb.`,
+    `Camp films the door opening. Then stops. Sets down Anime's phone. He's going to remember this one without footage. The light coming through is the best light he's ever seen and he's not going to put it in a frame. Some things are just for you.\n\nHe walks through.\n\nOn the other side, he sits down and opens his notes and writes: *Ending: everything I said I would remember, I remembered. That's the video. That's always been the video.*\n\nThen he calls his grandmother.`,
+    `The door opens. Tact stands in the light and takes a single photograph — just one, with his phone, no drone, no distance. Just him and the light and the moment. He sends it to the geology professor with no caption. Then he opens RESTAURANT PROPOSAL and adds one line at the bottom: *Named for my dad: SUNDAYS.*\n\nHe steps through.\n\nOn the stairs going up, he takes out his last sausage. Eats it.\n\nPerfect temperature.`,
+    `The door opens. Anime turns to Gerald. Gerald doesn't move — can't leave, part of the dungeon, always was. He rattles the long one. The complicated one. Anime has been learning this language for weeks.\n\n*Thank you for coming. Thank you for staying. You were interesting. You are real. Come back sometime.*\n\nAnime nods. He will. He knows he will.\n\nHe steps through. On the other side, sunlight. His phone buzzes: a message from @dungeon_cat.\n\n*good luck up there.*\n\n:) he sends back.\n\nHe climbs.`
+  )},
+};
+
+// Character-specific side quests
+const SIDE_QUESTS = [
+  // DOOM specific
+  {minFloor:2,maxFloor:4,cls:'doom',title:"Five Stars",text:()=>`The dungeon's first creature drops something when defeated: a receipt. Doom's receipt. Signed by him, dated tonight. The item listed: "One Delivery, Extra Courage." He pockets it next to the order slip. His rating on the app — he checks — has gone up 0.3 stars. He doesn't know how. He doesn't ask.`},
+  {minFloor:4,maxFloor:7,cls:'doom',title:"Old Route",text:()=>`Floor 5 has a corridor Doom recognizes. Not the dungeon — the layout. Left, left, right, stairs, right. It's the same as his Tuesday route in Riverside Heights. The same sequence of decisions he makes without thinking, that he's made for eleven years. The dungeon learned his route. He walks it from memory. Every turn is correct.`},
+  {minFloor:9,maxFloor:12,cls:'doom',title:"The Regulars",text:()=>`He starts recognizing the enemies. Not their species — their behavior. One skeleton always hangs back. One goblin goes for ankles. One orc blocks the corridor exactly the way the guy at 14B always parks his pickup. He's been adapting to difficult environments his whole career. This is just a different neighborhood.`},
+  {minFloor:16,maxFloor:19,cls:'doom',title:"The Realization",text:()=>`It hits Doom somewhere around Floor 17: he is 44 years old, has been in a dungeon for two weeks, has not aged a day, and is the most interesting person in any room he's ever entered. He's always been the most interesting person in the room. He just kept delivering to other people's rooms. He straightens his cap. Walks faster.`},
+  {minFloor:26,maxFloor:29,cls:'doom',title:"Rate Your Delivery",text:()=>`A carved stone on Floor 27 has a five-star rating system etched into it. Below it, a stylus. Doom reads the previous review: "Arrived during difficult circumstances. Did not hesitate. Would recommend." One reviewer. Left nine hundred years ago. He adds his rating: five stars. In the notes field, he writes: STILL ON THE CLOCK.`},
+  {minFloor:36,maxFloor:39,cls:'doom',title:"Karen's Version",text:()=>`Karen tells him what she told Floor 5 Doom — the version of him she met when she first arrived, in a vision or a dream or whatever the dungeon does. "He was still delivering," she says. "Still on the clock. Still going." She pauses. "He looked happy, though. I'd never seen you look like that." He thinks about that for the rest of the floor.`},
+  
+  // CAMP specific
+  {minFloor:2,maxFloor:4,cls:'camp',title:"First Shot",text:()=>`Camp's footage from Floor 2 is the most beautiful thing he's ever filmed. The bioluminescent moss. The carved archways. The shadow of a skeleton doing something that looks unmistakably like waving at the camera. He plays it back. The skeleton is definitely waving. He adds it to the edit.`},
+  {minFloor:4,maxFloor:7,cls:'camp',title:"The Algorithm",text:()=>`Camp's phone buzzes: a notification from the platform. His dungeon video has been recommended to 4 million people. He didn't optimize the thumbnail. He didn't SEO the title. He just pointed the camera at something real and hit upload. He sits with this information for a while. Then films a follow-up where he explains this, crying slightly, which gets 6 million views.`},
+  {minFloor:9,maxFloor:12,cls:'camp',title:"The Review",text:()=>`Camp posts a Yelp review for the dungeon. Four stars. "Ambiance: excellent (once you adjust). Staff: aggressive but consistent. Food: legitimately exceptional, especially the bioluminescent mushrooms (nutty, earthy, pairs with anything). Would return. Have returned. Currently cannot leave." The dungeon's rating goes from no stars to 4.1 overnight.`},
+  {minFloor:16,maxFloor:19,cls:'camp',title:"Mom's Message",text:()=>`Camp's mom leaves a comment on his latest video. In Spanish: "mijo I saw you crying in this one. You look like your grandfather when he was happy. Are you eating enough." 84,000 likes. 1,200 replies, most of them asking if they can adopt his mom. He calls her. She asks about the food. He describes the dungeon crab. She says it sounds like abuela's recipe. He doesn't tell her she's probably right.`},
+  {minFloor:26,maxFloor:29,cls:'camp',title:"The Brand Deal",text:()=>`The seafood company emails again. $90,000 for one video. He responds: "I'll mention you once, naturally, if the product fits the story. No scripts, no sponsored segments. Take it or leave it." They take it immediately and double the offer. He learns something important about what happens when you stop trying to be what they want.`},
+  {minFloor:36,maxFloor:39,cls:'camp',title:"The Video He Won't Post",text:()=>`Camp makes a video on Floor 37 that he will never post. Just him, alone, talking about his dad — who also worked in a creative field, who also struggled, who died before Camp got his first real job. He talks for twenty minutes. Then he closes the camera. Some things are for you. He understands this now in a way he didn't before.`},
+  
+  // TACT specific
+  {minFloor:2,maxFloor:4,cls:'tact',title:"Thermal Survey",text:()=>`Tact's drone returns data from Floor 2: the dungeon maintains a precise gradient of temperature, warmer near the walls. He identifies three separate micro-climates within a single corridor. He begins mapping them. Column A: Location. Column B: Temperature. Column C: Culinary Application. Column D doesn't exist yet. It will.`},
+  {minFloor:4,maxFloor:7,cls:'tact',title:"The Sausage Theory",text:()=>`Tact has a theory: the sausage links he carries represent something. A control variable. A baseline. He tests every hot spring against his sausage standard — if the thermal dynamics can render the collagen correctly, the environment has culinary potential. By Floor 6 he has found four sites with "exceptional potential." He takes coordinates.`},
+  {minFloor:9,maxFloor:12,cls:'tact',title:"The Paper",text:()=>`Tact's paper is now 38 pages: "Thermal Dynamics and Culinary Applications of Sub-Terrestrial Hot Spring Systems: Preliminary Field Evidence." He submits it to a journal from Floor 10. The automated response says "under review." He makes a note. Returns to his spreadsheet. Adds a row for Floor 10. Notes the temperature. Notes that something important just happened.`},
+  {minFloor:16,maxFloor:19,cls:'tact',title:"Dad's Recipe",text:()=>`On Floor 16 Tact finds a carved recipe in the wall — translated, it's a gumbo. Specifically, his dad's gumbo. The exact proportions. He stands in the corridor with the dungeon carving and his phone open to his dad's saved recipe and they match line for line. He sits down on the floor for a while. The dungeon dims its lighting. It knows when to give someone space.`},
+  {minFloor:26,maxFloor:29,cls:'tact',title:"Eight Tables",text:()=>`He names three of them. Table one: the large corner one, for groups. Table two: the two-top by the window, for first dates and difficult conversations. Table three: the four-top in the middle, for families who need space but not too much. He knows exactly what's on the menu for each. He doesn't write it down. He doesn't need to.`},
+  {minFloor:36,maxFloor:39,cls:'tact',title:"The Response",text:()=>`The geology professor responds with a phone number and: "Call me. I have questions I can't ask in email." Tact calls. The professor has read all 94 pages. Says it's the most important field report she's received in a decade. Says she's allocating resources. Says whatever he needs. Tact says: "Kitchen access. The good thermal equipment. I'm doing research." She says yes without asking why.`},
+  
+  // ANIME specific
+  {minFloor:2,maxFloor:4,cls:'anime',title:"Gerald",text:()=>`Gerald cannot speak but communicates through a system of rib-rattles that Anime has been learning since Floor 1. Gerald's vocabulary is larger than expected. Current known phrases: *hello, goodbye, careful, good, wait, I've been here a long time, it gets better, are you okay, I'm okay, nice hoodie.* The last one is Anime's favorite.`},
+  {minFloor:4,maxFloor:7,cls:'anime',title:"The Wi-Fi",text:()=>`Anime was right. There is better Wi-Fi in the deep floors. He finds the network password carved into a wall in runes. He translates it: DUNGEON_GUEST. The password is "password." "OF COURSE it's password," he says. Gerald rattles. The rattle means *I have been trying to fix this for two hundred years.*`},
+  {minFloor:9,maxFloor:12,cls:'anime',title:"The Account",text:()=>`@dungeon_cat was created nine hundred years ago. Anime can see this in a cached version of a platform that hasn't existed since the Bronze Age, somehow accessible on the dungeon's inexplicable one-bar signal. Gerald has been online since the beginning. His join date predates the internet by eight centuries. He has 3 followers. One is Anime. One is @TheDeepOne. One is a bot.`},
+  {minFloor:16,maxFloor:19,cls:'anime',title:"Mom's Voice",text:()=>`Anime's phone rings. His mom. He stares at it for two rings. Picks up. She talks for twenty minutes about the garden, the neighbor's cat, a dream she had. He doesn't say much. She doesn't need him to. When she hangs up she says: "I knew you'd be okay. You always land somewhere good." He cries a little after. Gerald pats his shoulder with a radius bone.`},
+  {minFloor:26,maxFloor:29,cls:'anime',title:"The Mural Space",text:()=>`Gerald shows Anime the mural on Floor 26 — hundreds of figures who came before. Gerald's is near the top, small, with a tiny bread loaf. Anime looks for the empty space Gerald mentioned. It's near the bottom, sized right. He reaches out and touches it. The wall is warm. "Saving it," Gerald says, in the language Anime now understands. "For when you come back to see it painted."   `},
+  {minFloor:36,maxFloor:39,cls:'anime',title:"The Letter",text:()=>`Anime writes Gerald a second letter, on dungeon-paper with mineral ink. He describes what's above: spring sunlight, ketchup chips, the 7-Eleven on Maple, VRchat on a Saturday, his mom's voice on a good phone call. Things Gerald hasn't seen in nine hundred years. He reads it to him. Gerald is very still. Then rattles the thing that means *thank you for telling me. It sounds nice up there.*`},
+];
+
+function mkStory(){
+  const runSideQuests=[];
+  const usedFloors=new Set();
+  // Side quests will be filtered by cls at display time
+  // Pre-assign floors for all quests (run-specific randomization)
+  const shuffled=[...SIDE_QUESTS].sort(()=>Math.random()-.5);
+  for(const sq of shuffled){
+    for(let f=sq.minFloor;f<=sq.maxFloor;f++){
+      if(!usedFloors.has(f)){usedFloors.add(f);runSideQuests.push({floor:f,...sq});break;}
+    }
+  }
+  runSideQuests.sort((a,b)=>a.floor-b.floor);
+  return{sideQuests:runSideQuests,usedStory:new Set()};
+}
+
+
 const TALENTS=[
   {n:'Iron Constitution',d:'+25 Max HP, +2 HP Regen/turn',fn:p=>{p.pb.mhp=(p.pb.mhp||0)+25;p.pb.regen=(p.pb.regen||0)+2;}},
   {n:'Thick Hide',d:'+6 DEF permanently',fn:p=>{p.pb.def=(p.pb.def||0)+6;}},
@@ -50,7 +230,7 @@ const TALENTS=[
   {n:'Death Mark',d:'+15% dmg to enemies below 50% HP',fn:p=>{p.pb.execBonus=true;}},
 ];
 function pickTalents(){return [...TALENTS].sort(()=>Math.random()-.5).slice(0,3);}
-const BOSSES={5:{n:'Shadow Wraith',col:'#AA44FF',hp:280,atk:32,def:10,xp:650,sp:'lich'},10:{n:'Stone Colossus',col:'#8899AA',hp:600,atk:40,def:28,xp:1200,sp:'troll'},15:{n:'Vampire Lord Vrath',col:'#CC0033',hp:520,atk:52,def:18,xp:2000,sp:'vampire'},20:{n:'Archmage Korsoth',col:'#0033FF',hp:680,atk:65,def:22,xp:3200,sp:'dmage'},25:{n:'Chaos Dragon Xareth',col:'#FF2200',hp:1100,atk:88,def:32,xp:6000,sp:'dragon'}};
+const BOSSES={5:{n:'Shadow Wraith',col:'#AA44FF',hp:280,atk:32,def:10,xp:650,sp:'lich',spd:4},10:{n:'Stone Colossus',col:'#8899AA',hp:600,atk:40,def:28,xp:1200,sp:'troll',spd:3},15:{n:'Vampire Lord Vrath',col:'#CC0033',hp:520,atk:52,def:18,xp:2000,sp:'vampire',spd:7},20:{n:'Archmage Korsoth',col:'#0033FF',hp:680,atk:65,def:22,xp:3200,sp:'dmage',spd:6},25:{n:'Chaos Dragon Xareth',col:'#FF2200',hp:1100,atk:88,def:32,xp:6000,sp:'dragon',spd:3}};
 const RARS=['Common','Uncommon','Rare','Epic','Legendary'];
 const RCOLS=['#9D9D9D','#1EFF00','#0070DD','#A335EE','#FF8000'];
 const RW=[50,28,14,6,2];
@@ -60,19 +240,196 @@ const SFX=[{n:'of Power',str:2},{n:'of the Bear',vit:4},{n:'of the Eagle',dex:3}
 const STATKEYS=['atk','def','mgk','str','dex','vit','int','luk','mhp','crit','ls'];
 function pickRar(f){const w=[...RW];const b=Math.floor(f/4);w[0]=Math.max(8,w[0]-b*5);w[1]+=b;w[2]+=b;w[3]+=Math.floor(b/2);w[4]+=Math.floor(b/3);let t=w.reduce((a,b)=>a+b,0),r=Math.random()*t;for(let i=0;i<w.length;i++){r-=w[i];if(r<=0)return i;}return 0;}
 function mkItem(f,ft=null){const type=ft||(Math.random()<0.2?'consumable':pick(['weapon','armor','helmet','boots','gloves','ring','amulet']));const base={...pick(BASES[type])};const id=Math.random();if(type==='consumable')return{...base,type,id,rar:0,rc:RCOLS[0],dn:base.n};const rar=pickRar(f),mult=[1,1.35,1.75,2.3,3.2][rar],fs=1+f*0.07;const item={...base,type,id,rar,rc:RCOLS[rar],rn:RARS[rar]};STATKEYS.forEach(k=>{if(item[k]&&typeof item[k]==='number')item[k]=Math.max(1,Math.round(item[k]*mult*fs));});let pfx=null,sfx=null;if(rar>=1)pfx=pick(PFX);if(rar>=2)sfx=pick(SFX);if(rar>=4){pfx=pick(PFX);sfx=pick(SFX);}if(pfx){item.pfx=pfx.n;Object.keys(pfx).filter(k=>k!=='n').forEach(k=>{item[k]=(item[k]||0)+Math.round(pfx[k]*fs);});}if(sfx){item.sfx=sfx.n;Object.keys(sfx).filter(k=>k!=='n').forEach(k=>{item[k]=(item[k]||0)+Math.round(sfx[k]*fs);});}item.dn=[item.pfx,item.n,item.sfx].filter(Boolean).join(' ');item.val=Math.round((10+(item.atk||0)*2+(item.def||0)*2+(item.mgk||0)*2)*mult*fs);return item;}
-const EDEFS=[{n:'Rat',col:'#8B6914',hp:8,atk:2,def:0,xp:4,mf:1,sp:'rat'},{n:'Goblin',col:'#5D8A4E',hp:16,atk:4,def:1,xp:10,mf:1,sp:'goblin'},{n:'Skeleton',col:'#C8C8C8',hp:22,atk:6,def:2,xp:15,mf:1,sp:'skeleton'},{n:'Orc',col:'#4A7340',hp:42,atk:10,def:4,xp:30,mf:3,sp:'orc'},{n:'Dark Mage',col:'#9400D3',hp:32,atk:14,def:2,xp:38,mf:4,sp:'dmage',statusAtk:'burn',atkChance:.35},{n:'Troll',col:'#4B6B35',hp:85,atk:16,def:7,xp:60,mf:6,sp:'troll'},{n:'Vampire',col:'#8B0000',hp:65,atk:19,def:5,xp:78,mf:8,sp:'vampire',statusAtk:'drain',atkChance:.4},{n:'Demon',col:'#CC3300',hp:105,atk:24,def:9,xp:115,mf:10,sp:'demon',statusAtk:'burn',atkChance:.45},{n:'Lich',col:'#7B00C4',hp:130,atk:28,def:12,xp:155,mf:13,sp:'lich',statusAtk:'freeze',atkChance:.4},{n:'Dragon',col:'#B22222',hp:220,atk:38,def:18,xp:300,mf:17,sp:'dragon',statusAtk:'burn',atkChance:.5}];
-function mkEnemy(f){const el=EDEFS.filter(e=>e.mf<=f);const w=el.map(e=>Math.max(1,15-Math.abs(e.mf-f)*1.5));let t=w.reduce((a,b)=>a+b,0),r=Math.random()*t,ci=0;for(let i=0;i<w.length;i++){r-=w[i];if(r<=0){ci=i;break;}}const d=el[ci],sc=1+(f-1)*0.18;return{...d,id:Math.random(),mhp:Math.round(d.hp*sc),hp:Math.round(d.hp*sc),atk:Math.round(d.atk*sc),def:Math.round(d.def*sc),xp:Math.round(d.xp*sc),status:{},aggroed:false,patrolTimer:rnd(1,4),patrolDx:0,patrolDy:0};}
+const EDEFS=[{n:'Rat',col:'#8B6914',hp:8,atk:2,def:0,xp:4,mf:1,sp:'rat',spd:8},{n:'Goblin',col:'#5D8A4E',hp:16,atk:4,def:1,xp:10,mf:1,sp:'goblin',spd:6},{n:'Skeleton',col:'#C8C8C8',hp:22,atk:6,def:2,xp:15,mf:1,sp:'skeleton',spd:5},{n:'Orc',col:'#4A7340',hp:42,atk:10,def:4,xp:30,mf:3,sp:'orc',spd:4},{n:'Dark Mage',col:'#9400D3',hp:32,atk:14,def:2,xp:38,mf:4,sp:'dmage',statusAtk:'burn',atkChance:.35},{n:'Troll',col:'#4B6B35',hp:85,atk:16,def:7,xp:60,mf:6,sp:'troll'},{n:'Vampire',col:'#8B0000',hp:65,atk:19,def:5,xp:78,mf:8,sp:'vampire',statusAtk:'drain',atkChance:.4},{n:'Demon',col:'#CC3300',hp:105,atk:24,def:9,xp:115,mf:10,sp:'demon',statusAtk:'burn',atkChance:.45,spd:5},{n:'Lich',col:'#7B00C4',hp:130,atk:28,def:12,xp:155,mf:13,sp:'lich',statusAtk:'freeze',atkChance:.4},{n:'Dragon',col:'#B22222',hp:220,atk:38,def:18,xp:300,mf:17,sp:'dragon',statusAtk:'burn',atkChance:.5}];
+function mkEnemy(f){const el=EDEFS.filter(e=>e.mf<=f);const w=el.map(e=>Math.max(1,15-Math.abs(e.mf-f)*1.5));let t=w.reduce((a,b)=>a+b,0),r=Math.random()*t,ci=0;for(let i=0;i<w.length;i++){r-=w[i];if(r<=0){ci=i;break;}}const d=el[ci],sc=1+(f-1)*0.18;const eSpd=d.spd||5;return{...d,id:Math.random(),mhp:Math.round(d.hp*sc),hp:Math.round(d.hp*sc),atk:Math.round(d.atk*sc),def:Math.round(d.def*sc),xp:Math.round(d.xp*sc),status:{},aggroed:false,patrolTimer:rnd(1,4),patrolDx:0,patrolDy:0,spd:eSpd,atkTimer:0};}
 function mkBoss(f){const keys=Object.keys(BOSSES).map(Number).sort((a,b)=>a-b);const bk=keys.find(k=>k===f)||keys[keys.length-1];const bd={...BOSSES[bk]};const sc=1+Math.max(0,f-bk)*0.25;return{...bd,id:Math.random(),mhp:Math.round(bd.hp*sc),hp:Math.round(bd.hp*sc),atk:Math.round(bd.atk*sc),def:Math.round(bd.def*sc),xp:Math.round(bd.xp*sc),boss:true,status:{}};}
-function mkDungeon(f){const isBossFloor=f%5===0;const isMerchantFloor=f%3===0&&!isBossFloor;const tiles=Array.from({length:DH},()=>new Array(DW).fill(T.WALL));const vis=Array.from({length:DH},()=>new Array(DW).fill(V.DARK));const rooms=[];function bsp(x1,y1,x2,y2,d){const w=x2-x1,h=y2-y1;if(w<9||h<9||d<=0){const rw=rnd(4,Math.min(w-2,11)),rh=rnd(4,Math.min(h-2,10));if(rw<3||rh<3)return null;const rx=x1+rnd(1,Math.max(1,w-rw-1)),ry=y1+rnd(1,Math.max(1,h-rh-1));const room={x:rx,y:ry,w:rw,h:rh,cx:rx+(rw/2|0),cy:ry+(rh/2|0)};rooms.push(room);for(let dy=ry;dy<ry+rh;dy++)for(let dx=rx;dx<rx+rw;dx++)if(dy>0&&dy<DH-1&&dx>0&&dx<DW-1)tiles[dy][dx]=T.FLOOR;return room;}const sh=w>h?Math.random()<0.6:Math.random()<0.4;let a,b;if(sh&&w>12){const s=rnd((w*.4)|0,(w*.6)|0);a=bsp(x1,y1,x1+s,y2,d-1);b=bsp(x1+s,y1,x2,y2,d-1);}else if(h>12){const s=rnd((h*.4)|0,(h*.6)|0);a=bsp(x1,y1,x2,y1+s,d-1);b=bsp(x1,y1+s,x2,y2,d-1);}else return bsp(x1,y1,x2,y2,0);if(a&&b){let cx=a.cx,cy=a.cy;while(cx!==b.cx){if(cx>=1&&cx<DW-1&&cy>=1&&cy<DH-1)tiles[cy][cx]=T.FLOOR;cx+=cx<b.cx?1:-1;}while(cy!==b.cy){if(cx>=1&&cx<DW-1&&cy>=1&&cy<DH-1)tiles[cy][cx]=T.FLOOR;cy+=cy<b.cy?1:-1;}}return a||b;}bsp(0,0,DW,DH,4);if(!rooms.length){for(let y=2;y<DH-2;y++)for(let x=2;x<DW-2;x++)tiles[y][x]=T.FLOOR;rooms.push({x:2,y:2,w:DW-4,h:DH-4,cx:DW/2|0,cy:DH/2|0});}const sh=[...rooms].sort(()=>Math.random()-.5);const sr=sh[0],er=sh[sh.length-1];tiles[er.cy][er.cx]=T.STAIRS;const enemies=[];if(isBossFloor){const boss=mkBoss(f);boss.x=er.cx;boss.y=er.cy-1;if(tiles[boss.y]?.[boss.x]===T.FLOOR)enemies.push(boss);}sh.slice(1,-1).forEach(r=>{if(Math.random()<0.3){const cx=r.x+rnd(1,r.w-2),cy=r.y+rnd(1,r.h-2);if(tiles[cy][cx]===T.FLOOR)tiles[cy][cx]=T.CHEST;}});if(isMerchantFloor&&sh.length>2){const mr=sh[Math.floor(sh.length/2)];if(tiles[mr.cy][mr.cx]===T.FLOOR)tiles[mr.cy][mr.cx]=T.MERCHANT;}const numR=Math.min(3,1+(f/4|0));sh.slice(1).forEach(r=>{const n=rnd(1,numR);for(let i=0;i<n&&enemies.length<28;i++){const ex=r.x+rnd(0,r.w-1),ey=r.y+rnd(0,r.h-1);if(tiles[ey]?.[ex]===T.FLOOR)enemies.push({...mkEnemy(f),x:ex,y:ey});}});const items=[];sh.slice(1).forEach(r=>{if(Math.random()<0.2){const ix=r.x+rnd(0,r.w-1),iy=r.y+rnd(0,r.h-1);if(tiles[iy]?.[ix]===T.FLOOR)items.push({...mkItem(f),x:ix,y:iy});}});const merchantInv=isMerchantFloor?Array.from({length:4},()=>mkItem(f+2)):[];return{tiles,vis,rooms,enemies,items,start:{x:sr.cx,y:sr.cy},isBossFloor,isMerchantFloor,merchantInv};}
+function mkDungeon(f){const isBossFloor=f%5===0;const isMerchantFloor=f%3===0&&!isBossFloor;const tiles=Array.from({length:DH},()=>new Array(DW).fill(T.WALL));const vis=Array.from({length:DH},()=>new Array(DW).fill(V.DARK));const rooms=[];function bsp(x1,y1,x2,y2,d){const w=x2-x1,h=y2-y1;if(w<9||h<9||d<=0){const rw=rnd(4,Math.min(w-2,11)),rh=rnd(4,Math.min(h-2,10));if(rw<3||rh<3)return null;const rx=x1+rnd(1,Math.max(1,w-rw-1)),ry=y1+rnd(1,Math.max(1,h-rh-1));const room={x:rx,y:ry,w:rw,h:rh,cx:rx+(rw/2|0),cy:ry+(rh/2|0)};rooms.push(room);for(let dy=ry;dy<ry+rh;dy++)for(let dx=rx;dx<rx+rw;dx++)if(dy>0&&dy<DH-1&&dx>0&&dx<DW-1)tiles[dy][dx]=T.FLOOR;return room;}const sh=w>h?Math.random()<0.6:Math.random()<0.4;let a,b;if(sh&&w>12){const s=rnd((w*.4)|0,(w*.6)|0);a=bsp(x1,y1,x1+s,y2,d-1);b=bsp(x1+s,y1,x2,y2,d-1);}else if(h>12){const s=rnd((h*.4)|0,(h*.6)|0);a=bsp(x1,y1,x2,y1+s,d-1);b=bsp(x1,y1+s,x2,y2,d-1);}else return bsp(x1,y1,x2,y2,0);if(a&&b){let cx=a.cx,cy=a.cy;while(cx!==b.cx){if(cx>=1&&cx<DW-1&&cy>=1&&cy<DH-1)tiles[cy][cx]=T.FLOOR;cx+=cx<b.cx?1:-1;}while(cy!==b.cy){if(cx>=1&&cx<DW-1&&cy>=1&&cy<DH-1)tiles[cy][cx]=T.FLOOR;cy+=cy<b.cy?1:-1;}}return a||b;}bsp(0,0,DW,DH,4);if(!rooms.length){for(let y=2;y<DH-2;y++)for(let x=2;x<DW-2;x++)tiles[y][x]=T.FLOOR;rooms.push({x:2,y:2,w:DW-4,h:DH-4,cx:DW/2|0,cy:DH/2|0});}const sh=[...rooms].sort(()=>Math.random()-.5);const sr=sh[0],er=sh[sh.length-1];tiles[er.cy][er.cx]=T.STAIRS;const enemies=[];if(isBossFloor){const boss=mkBoss(f);boss.x=er.cx;boss.y=er.cy-1;if(tiles[boss.y]?.[boss.x]===T.FLOOR)enemies.push(boss);}sh.slice(1,-1).forEach(r=>{if(Math.random()<0.3){const cx=r.x+rnd(1,r.w-2),cy=r.y+rnd(1,r.h-2);if(tiles[cy][cx]===T.FLOOR)tiles[cy][cx]=T.CHEST;}});if(isMerchantFloor&&sh.length>2){const mr=sh[Math.floor(sh.length/2)];if(tiles[mr.cy][mr.cx]===T.FLOOR)tiles[mr.cy][mr.cx]=T.MERCHANT;}const numR=Math.min(3,1+(f/4|0));sh.slice(1).forEach(r=>{const n=rnd(1,numR);for(let i=0;i<n&&enemies.length<28;i++){const ex=r.x+rnd(0,r.w-1),ey=r.y+rnd(0,r.h-1);if(tiles[ey]?.[ex]===T.FLOOR)enemies.push({...mkEnemy(f),x:ex,y:ey});}});const items=[];sh.slice(1).forEach(r=>{if(Math.random()<0.2){const ix=r.x+rnd(0,r.w-1),iy=r.y+rnd(0,r.h-1);if(tiles[iy]?.[ix]===T.FLOOR)items.push({...mkItem(f),x:ix,y:iy});}});const merchantInv=isMerchantFloor?Array.from({length:4},()=>mkItem(f+2)):[];// Place NPCs for this floor
+  const npcDefs=NPC_DEFS[f]||[];
+  const npcs=[];
+  npcDefs.forEach((def,i)=>{
+    // Place in a non-start room if possible
+    const targetRoom=sh[Math.min(i+1,sh.length-1)];
+    // Find a floor tile near room center that isn't occupied
+    for(let attempt=0;attempt<20;attempt++){
+      const nx=targetRoom.cx+rnd(-2,2),ny=targetRoom.cy+rnd(-2,2);
+      if(tiles[ny]?.[nx]===T.FLOOR&&!npcs.find(n=>n.x===nx&&n.y===ny)){
+        npcs.push({...def,x:nx,y:ny,id:'npc_'+f+'_'+i,talked:false});
+        break;
+      }
+    }
+  });
+  return{tiles,vis,rooms,enemies,items,npcs,start:{x:sr.cx,y:sr.cy},isBossFloor,isMerchantFloor,merchantInv};}
+// ═══════════════════════════════════════════════════════════════════════
+// QUEST SYSTEM
+// ═══════════════════════════════════════════════════════════════════════
+
+// Quest types
+const QT = {KILL:'kill', FIND:'find', KEY:'key', EXPLORE:'explore', ITEM:'item'};
+
+// Floor objectives — every floor has one
+// type: kill N enemies | find key | explore N% | item hunt
+const FLOOR_OBJECTIVES = (floor) => {
+  const h = ((floor * 2654435761) >>> 0) % 100;
+  if (floor % 5 === 0) {
+    // Boss floors: defeat the boss
+    return {type:QT.KILL, target:'boss', count:1, label:'Defeat the floor boss', reward:{gold:floor*18, xp:floor*25}};
+  }
+  if (h < 30) {
+    const n = 3 + (floor>>2);
+    return {type:QT.KILL, target:'any', count:n, label:`Clear ${n} enemies`, reward:{gold:floor*8, xp:floor*12}};
+  }
+  if (h < 55) {
+    // Changed from KEY (unspawnable) to EXPLORE — more reliable
+    return {type:QT.EXPLORE, pct:65, label:'Explore 65% of the floor', reward:{gold:floor*12, xp:floor*10}};
+  }
+  if (h < 75) {
+    return {type:QT.EXPLORE, pct:70, label:'Explore 70% of the floor', reward:{gold:floor*6, xp:floor*15}};
+  }
+  return {type:QT.KILL, target:'any', count:2+(floor>>3), label:`Eliminate ${2+(floor>>3)} threats`, reward:{gold:floor*10, xp:floor*10}};
+};
+
+// NPC quests — given by specific NPCs, tracked across floors
+const NPC_QUESTS = {
+  4: {  // Grix
+    id:'grix_q1', title:"Grix's Warning",
+    desc:'Kill 3 goblins on this floor before you go deeper. They\'re planning something.',
+    type:QT.KILL, target:'goblin', count:3,
+    reward:{gold:80, xp:50, item:true},
+    complete_text:'Not bad for a surface-dweller. Here — I lifted this off a wandering skeleton. Don\'t ask how.'
+  },
+  7: {  // Aldric
+    id:'aldric_q1', title:"Aldric's Errand",
+    desc:'Kill 4 skeletons on this floor — they stole my journal and I need to recover it from them.',
+    type:QT.KILL, target:'skeleton', count:4,
+    reward:{gold:120, xp:75},
+    complete_text:'Ah! One of them had the pages. You\'ll want to read these notes before Floor 22. Actually — keep them. I have a copy.'
+  },
+  8: {  // Karen
+    id:'karen_q1', title:"Karen's Favor",
+    desc:'Clear the corridor to the east — there are 2 orcs blocking my supply route and I\'m running low on ranch.',
+    type:QT.KILL, target:'orc', count:2,
+    reward:{gold:200, xp:100, hp:40},
+    complete_text:'You absolute legend. Here, eat something. You look like you\'ve been running on adrenaline for three floors.'
+  },
+  12: {  // The Watcher
+    id:'watcher_q1', title:"The Watcher's Test",
+    desc:'Defeat 5 enemies on this floor without retreating. The dungeon is watching how you fight.',
+    type:QT.KILL, target:'any', count:5,
+    reward:{gold:150, xp:120},
+    complete_text:'You passed. The dungeon noticed. That matters more than you know.'
+  },
+  20: {  // Old Mira
+    id:'mira_q1', title:"Mira's Collection",
+    desc:'Clear out 5 of the creatures on this floor — they keep breaking my crystals and I need some peace.',
+    type:QT.KILL, target:'any', count:5,
+    reward:{gold:300, xp:200, item:true},
+    complete_text:'Six years underground and nobody ever brought me peace and quiet before. You\'re good people.'
+  },
+  25: {  // Cotter
+    id:'cotter_q1', title:"Cotter's Cache",
+    desc:'The demons guarding the passage ahead need to go — clear out 4 of them and I\'ll give you something I\'ve been saving.',
+    type:QT.KILL, target:'demon', count:4,
+    reward:{gold:400, xp:250, item:true},
+    complete_text:'Those demons have been on my nerves for weeks. Take what\'s in that chest — you\'ve earned it more than I have.'
+  },
+  35: {  // Merchant Voss
+    id:'voss_q1', title:"Voss's Shipment",
+    desc:'Five enemies on this floor are carrying stolen goods. Recover them.',
+    type:QT.KILL, target:'any', count:5,
+    reward:{gold:500, xp:300, item:true},
+    complete_text:'Excellent. The dungeon economy appreciates your service. Here\'s your cut.'
+  },
+  42: {  // Petra
+    id:'petra_q1', title:"Petra's Trial",
+    desc:'Defeat 6 enemies on this floor without dying. If you can\'t handle this level, you can\'t handle what\'s below.',
+    type:QT.KILL, target:'any', count:6,
+    reward:{gold:600, xp:400, item:true},
+    complete_text:'Good. Now you\'re ready. Don\'t waste it.'
+  }
+};
+
+// ── NPC Quest Givers ─────────────────────────────────────────────────────────
+// Each floor entry: array of {name, icon, col, cls (optional filter), title, text}
+const NPC_DEFS = {
+  4: [{name:'Grix', icon:'👺', col:'#8BC34A',
+    title:'The Goblin Grix',
+    text:()=>`"Oy! Surface-dweller." The goblin looks you over with suspicious yellow eyes. "You got the look of someone who fell in. Not the look of someone who meant to." He leans on his makeshift spear. "Listen — whatever you're looking for down there, it ain't what you think. But it's probably better." He pauses. "There's a woman on Floor 8. Red delivery bag. She'll tell you more." He squints. "She's been here three weeks and she's doing GREAT, which is annoying."`
+  }],
+  7: [{name:'Aldric', icon:'🧙', col:'#9B59B6',
+    title:'Aldric the Lost',
+    text:()=>`A gaunt man in what was once fine clothing sits against the wall, surrounded by journals. "Ah. Another one." He looks up. "I came down fourteen months ago on a dare. Made it to Floor 22. Got comfortable." He gestures at his setup. "The carvings on the walls — they're not warnings, you know. They're a welcome mat. The dungeon WANTS you here." He tears a page from a journal. "Here. My map to Floor 9. The safe path. Consider it payment for the company."`
+  }],
+  8: [{name:'Karen', icon:'🧑', col:'#FF9800',
+    title:'Karen',
+    text:(cls)=>({
+      doom:`She's eating a seafood boil that smells incredible. She looks up. "Oh. Hey, Doom." A pause, and something complicated happens in her face. "I left a note at the address. Figured you'd find it." She stands up. "How'd you even get here?" He doesn't answer right away. "The address," he finally says. "I deliver everywhere." Karen laughs. It sounds like three weeks of being alone. "I know." She hands him the extra ranch. "You always do."`,
+      camp:`"Oh! You're Camp." She's seen the channel — tells him which video got her through the first three days underground. It's not his most-viewed. It's the one he made at his grandmother's kitchen. "That one's different from the rest," she says. "You're actually in the frame." She gestures at his camera. "You might want to film this. What's down here is going to change things."`,
+      tact:`"Are you... is that a drone?" She watches Tact's aerial unit hover over the seafood boil. "Can it detect temperature?" He is already nodding, already measuring. She shows him the spring she cooks in. "185°F. Natural. The mineral content is incredible." Tact sits down without being invited. Takes out his pot. "I've been carrying this since Floor 1," he says. She nods like this is completely normal. "Obviously."`,
+      anime:`She already knows about Gerald. "Oh, he's the best," she says. "Very good listener. Also very honest — hard to BS a skeleton." She's been here three weeks. She's okay. She figured out the Wi-Fi password on day two. She shows Anime the dungeon's room service system — there IS one, you just have to leave a specific combination of stones outside your door. "Gerald taught me," she says. "He's very solutions-oriented."`
+    }[cls]||'She looks up from her seafood boil. "Another one. The dungeon\'s been busy." She waves you over.')
+  }],
+  12: [{name:'The Watcher', icon:'🕵️', col:'#95A5A6',
+    title:'The Hooded Figure',
+    text:()=>`The figure doesn't move as you approach. Up close: a face you can't quite focus on, like trying to see a word in your peripheral vision. "You've been descending steadily," a voice says — from everywhere, from nowhere. "Most slow down around here. Start second-guessing." A pause. "The dungeon has been watching you specifically. It finds you interesting." The figure tilts its head. "So do I." A card appears in your hand, somehow, with a symbol you don't recognize. "If you find a matching symbol on the wall below, press it. Trust me." The figure is gone.`
+  }],
+  15:[{name:'Echo', icon:'🗿', col:'#4A90D9',
+    title:'Echo — Voice of the Dungeon',
+    text:(cls)=>({
+      doom:`The carved face on the wall moves. Its voice is stone on stone: "You carry something for someone else. You have always carried something for someone else." A pause. "I am not asking you to stop. I am asking: do you know what you carry for yourself?" It waits. Like it genuinely wants an answer. Like it has time. It has had nine hundred years. It has time.`,
+      camp:`"You frame everything," the carved face says. Not accusingly. "You've been framing things since you were small. Your grandmother. Your neighborhood. Your food." Its stone eyes somehow focus. "When did you stop being in the frame?" Camp opens his mouth to answer. The face says: "Don't answer now. Answer at the bottom. I'll be watching."`,
+      tact:`The face says: "You have forty-seven open data points about me. I know because I made forty-seven data points available." A pause that feels like a smile. "You are very good at understanding things from a distance." The temperature drops two degrees. "What happens when the distance closes?" It warms again. "Come find out."`,
+      anime:`"Gerald has been waiting for you specifically," the carved face says. "He told me about you in 2021. He said: 'There is someone who makes the internet feel less empty.' I said: 'Bring them down.' He said: 'I can't go up.' So I helped." A long pause. "I hope the meeting was worth the commute." Anime can't tell if a stone face can look apologetic, but this one tries.`
+    }[cls]||'The dungeon speaks.')
+  }],
+  20:[{name:'Old Mira', icon:'👵', col:'#E67E22',
+    title:'Old Mira',
+    text:()=>`A tiny woman sits beside a fire that shouldn't be possible this far underground. "Sit." It's not a question. "I've been here six years. Came down for my husband who came down for his dog. Dog's fine, husband's fine, I just... liked it." She pours tea from somewhere. "You're looking for the door." She says it like she says everything — like it's obvious. "Everyone who makes it to 20 is. And they all think they need to do something special to open it." She sips her tea. "They don't. They just need to be ready." She studies you. "You're not ready yet. But you're getting there."`
+  }],
+  25:[{name:'Cotter', icon:'🏴‍☠️', col:'#E74C3C',
+    title:'Cotter — The Furthest Down',
+    text:()=>`"Halfway." The man grins like it's a dare. His gear is patched, re-patched, and patched again. "Most people who make it to 25 go back up. You know why?" He leans forward. "Because they realize what's at 50. That it's real. That it changes things." He studies you. "The door at the bottom doesn't lead out. It leads in. To what the dungeon was built around." He stands. "I've been to Floor 48. Turned back." A pause. "Biggest mistake I ever made. Don't make it." He hands you something — a fragment of old carved stone. "Found this at 47. Hold onto it. You'll know when to use it."`
+  }],
+  30:[{name:'Gerald', icon:'💀', col:'#DDD',
+    title:'Gerald',
+    text:(cls)=>({
+      anime:`The skeleton waves when he sees you. You've been talking to him through rib-rattle for days. In person — well, in-corridor — he's taller than you expected. He makes a complicated sound. You understand: *I was hoping it would be you.* He hands you something — a small carved pendant, old, with a cat shape. "Where did you—" He rattles. *I made it. Nine hundred years ago. I was a baker then. I made it for someone I hoped would come.* He looks at you steadily. *I am glad it was you.*`,
+      doom:`The skeleton rattles carefully when you approach. You've heard about Gerald from Karen. He makes a sound that — you've picked up a few words from Anime — means *welcome* or possibly *finally.* He holds out something: a small carved stone with a pizza slice on it. You stare at it. He rattles. Anime translates: "He says he's been holding that since Floor 1. Says the dungeon told him someone was coming who would need it." You take it. It's warm.`,
+      camp:`The skeleton holds up a small tablet — actually a piece of dungeon wall he's somehow broken off cleanly. On it, etched carefully: a five-star rating. Below it, in ancient notation that you've been learning to read: *I watched all your videos.* Gerald rattles. Anime (who has apparently texted you a translation guide) says this means: *The one with your grandmother is the best one.* Gerald rattles again. *Make more like that.*`,
+      tact:`Gerald approaches with something in both hands: a small carved bowl, the exact size of a perfect portion. He sets it down. Inside: nothing, but the carving on the inside is a recipe — rendered in the dungeon's notation. You translate it in three minutes: it's a gumbo. Specifically, the gumbo. The one from Floor 32, the one that tasted like your dad's. Gerald watches you read it. When you look up, he rattles. You know what that means now. *Keep this.*`
+    }[cls]||'The skeleton waves.')
+  }],
+  35:[{name:'Merchant Voss', icon:'🧳', col:'#27AE60',
+    title:'Voss — Traveling Merchant',
+    text:()=>`"Special services for the deep floors." He opens a coat that has more pockets than should be physically possible. Inside each: something strange. "I don't just sell items down here. I sell information." He names a price in dungeon gold. "Floor 40: there's a room that looks like where you grew up. Don't be scared of it. It's the dungeon saying thank you." Another price. "Floor 48: the dungeon asks everyone the same question. Have your answer ready. It's the last question before the door." He closes the coat. "The door. Everyone asks about the door. I'll tell you this for free: what you bring through it matters more than how you open it."`
+  }],
+  42:[{name:'Petra', icon:'⚔️', col:'#C0392B',
+    title:'Petra — The Guardian',
+    text:()=>`She's sharpening a sword that looks like it's never needed sharpening. "You're close." She doesn't look up. "Forty-two floors. Most who make it here are different people than who started." She tests the blade. "The things at 45 and above — they hit harder. Not because they're stronger. Because they know you have something worth protecting now." She finally looks up. "Do you?" It's not rhetorical. She waits. "Because if you don't know what you're protecting by now, the last eight floors will show you." She sheathes the sword. "That's the dungeon's final lesson. It teaches through losing."`
+  }],
+  48:[{name:'Echo', icon:'🗿', col:'#4A90D9',
+    title:'Echo — Final Word',
+    text:(cls)=>({
+      doom:`The carved face again. Different wall, same voice. "You have come very far for someone who was just making a delivery." Something in the stone relaxes. "I have watched many people descend. Most look for treasure. Some look for escape. A few look for something they lost." It pauses. "You came to finish what you started. That is rarer than you know." A warmth from the wall. "The door opens for the one who arrives. Not the one who delivers."`,
+      camp:`"Your camera is almost out of battery," the face says. "I know." Camp nods. "Good," it says. "The next part — the door, the light, what comes after — that is not for the internet. That is for you." A pause. "You have spent this whole journey asking what is worth showing people. The answer is everything you almost didn't film. But also — some things you keep." The face settles. "You'll know which."`,
+      tact:`"Ninety-seven pages," the face says. "You know what you found." Tact nods. "The restaurant." "The restaurant," it confirms. "And?" Tact is quiet for a moment. "My dad would have loved it down here." "Yes," the face says. "He would have. The gumbo on Floor 32 — I made that for him too. Not just for you." A long silence. "He left something here, years ago. Not a physical thing. Just — the shape of someone who knew how to be happy." The wall warms. "You have his shape."`,
+      anime:`"Gerald wanted to come with you," the face says. "He can't. You know why." Anime nods. "He asked me to tell you something." A pause. "He said: the next time you log in to VRchat, look for a new account. He made it last week. He taught himself how through the dungeon's signal." Another pause. "He said: 'I'll be online. Same as always. Except now I know your face and that makes it different.'" The wall glows. "He also said — and I'm quoting: 'nice hoodie.'"`
+    }[cls]||'The dungeon speaks one final time.')
+  }],
+};
+
+// NPC quest state: which have been talked to this run
+function mkNpcState(floor){ return {talked:new Set()}; }
+
+
 const CLS={
-  doom:{n:'Doom',col:'#E8412C',bhp:125,str:7,int:3,dex:6,vit:6,luk:9,desc:'Pizza delivery legend & ladies man. Fearless, fast, and impossibly charming.'},
-  camp:{n:'Camp',col:'#F5A623',bhp:95,str:3,int:9,dex:4,vit:5,luk:5,desc:'Graphic artist by day, food YouTuber by night. Magic flows through content.'},
-  tact:{n:'Tact',col:'#27AE60',bhp:115,str:5,int:7,dex:6,vit:7,luk:5,desc:'Drone nerd. Dark hair, glasses, sausage enthusiast. Attacks from range — the drone does the dirty work.'},
-  anime:{n:'Anime',col:'#9B59B6',bhp:100,str:4,int:8,dex:3,vit:6,luk:5,desc:'VRchat connoisseur from the Great White North. Powered by cat girls and energy drinks.'},
+  doom:{n:'Doom',col:'#E8412C',bhp:125,str:7,int:3,dex:6,vit:6,luk:9,spd:9,desc:'Pizza delivery legend & ladies man. Fearless, fast, and impossibly charming.'},
+  camp:{n:'Camp',col:'#F5A623',bhp:95,str:3,int:9,dex:4,vit:5,luk:5,spd:6,desc:'Graphic artist by day, food YouTuber by night. Magic flows through content.'},
+  tact:{n:'Tact',col:'#27AE60',bhp:115,str:5,int:7,dex:6,vit:7,luk:5,spd:7,desc:'Drone nerd. Dark hair, glasses, sausage enthusiast. Attacks from range — the drone does the dirty work.'},
+  anime:{n:'Anime',col:'#9B59B6',bhp:100,str:4,int:8,dex:3,vit:6,luk:5,spd:5,desc:'VRchat connoisseur from the Great White North. Powered by cat girls and energy drinks.'},
 };
 const SKNAMES={doom:'Pizza Time',camp:'Going Viral',tact:'Drone Strike',anime:'Senpai Notice Me'};
 const xpN=lv=>Math.floor(100*Math.pow(1.5,lv-1));
-function calcStats(p){const c=CLS[p.cls],pb=p.pb||{};let str=c.str,int=c.int,dex=c.dex,vit=c.vit,luk=c.luk;let atk=pb.atk||0,def=pb.def||0,mgk=pb.mgk||0,mhp=pb.mhp||0;let ls=pb.ls||0,crit=pb.crit||0,dodge=pb.dodge||0,regen=pb.regen||0,thorns=pb.thorns||0;Object.values(p.eq).forEach(it=>{if(!it)return;str+=it.str||0;int+=it.int||0;dex+=it.dex||0;vit+=it.vit||0;luk+=it.luk||0;atk+=it.atk||0;def+=it.def||0;mgk+=it.mgk||0;mhp+=it.mhp||0;ls+=it.ls||0;crit+=it.crit||0;});(p.buffs||[]).forEach(b=>{str+=b.str||0;dex+=b.dex||0;atk+=b.atk||0;});if(p.status?.frozen)def=Math.round(def*.5);const totalMhp=c.bhp+vit*5+mhp+p.lv*8;const berserk=pb.berserk&&p.hp<totalMhp*.25;return{atk:atk+str*1.5+p.lv*2+(berserk?pb.berserk:0),def:def+(vit*.5|0)+p.lv,mgk:mgk+int*1.5,mhp:totalMhp,ls,crit:Math.min(.65,crit+dex*.015+luk*.01),dodge:Math.min(.5,dodge+dex*.01),regen,thorns,str,dex,vit,luk,int,vis:VR+(pb.vis||0)};}
+function calcStats(p){const c=CLS[p.cls],pb=p.pb||{};let str=c.str,int=c.int,dex=c.dex,vit=c.vit,luk=c.luk;let atk=pb.atk||0,def=pb.def||0,mgk=pb.mgk||0,mhp=pb.mhp||0;let ls=pb.ls||0,crit=pb.crit||0,dodge=pb.dodge||0,regen=pb.regen||0,thorns=pb.thorns||0;Object.values(p.eq).forEach(it=>{if(!it)return;str+=it.str||0;int+=it.int||0;dex+=it.dex||0;vit+=it.vit||0;luk+=it.luk||0;atk+=it.atk||0;def+=it.def||0;mgk+=it.mgk||0;mhp+=it.mhp||0;ls+=it.ls||0;crit+=it.crit||0;});(p.buffs||[]).forEach(b=>{str+=b.str||0;dex+=b.dex||0;atk+=b.atk||0;});if(p.status?.frozen)def=Math.round(def*.5);const totalMhp=c.bhp+vit*5+mhp+p.lv*8;const berserk=pb.berserk&&p.hp<totalMhp*.25;const totalSpd=c.spd+Math.floor(dex/2);return{atk:atk+str*1.5+p.lv*2+(berserk?pb.berserk:0),def:def+(vit*.5|0)+p.lv,mgk:mgk+int*1.5,mhp:totalMhp,ls,crit:Math.min(.65,crit+dex*.015+luk*.01),dodge:Math.min(.5,dodge+dex*.01),regen,thorns,str,dex,vit,luk,int,vis:VR+(pb.vis||0),spd:totalSpd};}
 function applyStatusToPlayer(p,type,power){const s={...(p.status||{})};if(type==='poison'){s.poison=4;s.poisonDmg=power||6;}if(type==='burn'){s.burn=3;s.burnDmg=power||8;}if(type==='freeze'){s.frozen=2;}return{...p,status:s};}
 function applyStatusToEnemy(e,type){const s={...(e.status||{})};if(type==='poison'){s.poison=4;s.poisonDmg=8;}if(type==='burn'){s.burn=3;s.burnDmg=10;}if(type==='freeze'){s.frozen=2;}return{...e,status:s};}
 function tickStatus(p,msgs){let np={...p,status:{...(p.status||{})}};const s=np.status;if(s.poison>0){const d=s.poisonDmg||6;np.hp-=d;msgs.push(`Poison: -${d} HP`);s.poison--;}if(s.burn>0){const d=s.burnDmg||8;np.hp-=d;msgs.push(`Burn: -${d} HP`);s.burn--;}if(s.frozen>0){s.frozen--;if(s.frozen===0)msgs.push('Thawed!');}const st=calcStats(np);if(st.regen>0&&np.hp<st.mhp){np.hp=Math.min(np.hp+st.regen,st.mhp);}return np;}
@@ -105,14 +462,49 @@ function pAtk(p,e,mode){const st=calcStats(p);let np={...p},ne={...e},msgs=[],fl
   floats.push({x:e.x,y:e.y,txt:`${dmg}!!!`,col:'#DD88FF'});
   ne=applyStatusToEnemy(ne,'poison');
   msgs.push(`${e.n} is overwhelmed by anime energy!`);
-}np={...np,scd:5};}ne.hp-=dmg;return{p:np,e:ne,msgs,floats};}
+}const pSpd=calcStats(np).spd;np={...np,scd:Math.max(1,Math.round(12-pSpd))};}ne.hp-=dmg;return{p:np,e:ne,msgs,floats};}
 function eAtk(e,p){const st=calcStats(p);if(Math.random()<st.dodge)return{dmg:0,dodged:true};let dmg=Math.max(1,Math.round(e.atk-st.def+rnd(-3,4)));if(st.thorns>0){const tr=Math.round(dmg*st.thorns);return{dmg,dodged:false,thorns:tr};}return{dmg,dodged:false};}
-function initGame(name,cls){const cd=CLS[cls],dg=mkDungeon(1),st=mkStory();const p={name,cls,lv:1,xp:0,gold:0,hp:cd.bhp,eq:{weapon:null,armor:null,helmet:null,boots:null,gloves:null,ring:null,amulet:null},inv:[],buffs:[],scd:0,pb:{},status:{},goldMult:1,invCap:30,potMult:1};const dg2=updateVis(dg,dg.start,VR);return{scr:S.STORY,floor:1,p,dg:dg2,pos:{...dg.start},st,sq:[{t:CHTITLES[0],tx:CHTEXTS[0](st,name,cd.n)}],log:['Adventure begins! WASD/Arrows=move | Q=skill | I=inventory'],turn:0,floats:[]};}
+function initGame(name,cls){const cd=CLS[cls],dg=mkDungeon(1),st=mkStory();const p={name,cls,lv:1,xp:0,gold:0,hp:cd.bhp,eq:{weapon:null,armor:null,helmet:null,boots:null,gloves:null,ring:null,amulet:null},inv:[],buffs:[],scd:0,pb:{},status:{},goldMult:1,invCap:30,potMult:1};const dg2=updateVis(dg,dg.start,VR);const story=mkStory();
+  const floorObj1=FLOOR_OBJECTIVES(1);
+  return{scr:S.STORY,floor:1,p,dg:dg2,pos:{...dg.start},story,
+    floorObj:floorObj1,floorObjProg:0,floorObjDone:false,
+    activeQuest:null,questProg:0,questDone:false,itemsUsed:0,
+    sq:[{t:STORY_FLOORS[1].title,tx:STORY_FLOORS[1].text(p.cls,name)}],log:['Adventure begins! WASD/Arrows=move | Q=skill | I=inventory'],turn:0,floats:[]};}
 function updateVis(dg,pos,vr){const vis=dg.vis.map(r=>[...r]);for(let y=0;y<DH;y++)for(let x=0;x<DW;x++)if(vis[y][x]===V.LIT)vis[y][x]=V.SEEN;for(let dy=-vr;dy<=vr;dy++)for(let dx=-vr;dx<=vr;dx++){const nx=pos.x+dx,ny=pos.y+dy;if(nx>=0&&nx<DW&&ny>=0&&ny<DH&&Math.sqrt(dx*dx+dy*dy)<=vr)vis[ny][nx]=V.LIT;}return{...dg,vis};}
 let GS={scr:S.TITLE};
 function dispatch(action){
   const prev=GS;
   GS=reduce(GS,action);
+
+  // ── Audio triggers ─────────────────────────────────────────────────────
+  if(_audSettings.sfx){
+    if(action.type==='MOVE'&&(action.dx!==0||action.dy!==0)){
+      // Play hit sound if player took damage
+      if(GS.p&&prev.p&&GS.p.hp<prev.p.hp)AUD.play('playerHit');
+      // Enemy died
+      if(GS.dg&&prev.dg&&GS.dg.enemies.length<prev.dg.enemies.length)AUD.play('death');
+    }
+    if(action.type==='SKILL'){AUD.play('skill');if(GS.p&&prev.p&&GS.p.hp<prev.p.hp)AUD.play('playerHit');}
+    if(action.type==='USE')AUD.play('pickup');
+    if(action.type==='TALK')AUD.play('talk');
+    if(action.type==='COMPLETE_QUEST')AUD.play('questDone');
+    if(action.type==='ACCEPT_QUEST')AUD.play('click');
+    if(action.type==='ASCEND')AUD.play('stairs');
+    if(action.type==='PICK_TALENT')AUD.play('levelup');
+  }
+  // ── Music based on screen/context ──────────────────────────────────────
+  if(_audSettings.music){
+    if(GS.scr===S.GAME){
+      const isBoss=GS.dg&&GS.dg.isBossFloor;
+      const hasMerchant=GS.dg&&GS.dg.isMerchantFloor;
+      const inCombat=GS.dg&&GS.dg.enemies.some(e=>e.hp>0&&e.aggroed);
+      const musicType=isBoss&&inCombat?'boss':inCombat?'combat':hasMerchant?'merchant':'explore';
+      AUD.playMusic(musicType);
+    }else if(GS.scr===S.INV||GS.scr===S.STORY||GS.scr===S.STAIRS){
+      AUD.stopMusic();
+    }
+  }
+
   // Track animation triggers
   if(action.type==='MOVE'&&(action.dx!==0||action.dy!==0)){
     PANIM.lastMove=Date.now();
@@ -122,14 +514,82 @@ function dispatch(action){
   }
   if(action.type==='SKILL'){PANIM.lastAtk=Date.now();}
   if(GS.p&&prev.p&&GS.p.hp<prev.p.hp){PANIM.lastHurt=Date.now();}
-  if(action.type==='ENEMY_TICK'&&GS.scr===S.INV)return;
+  if(action.type==='ENEMY_TICK'&&(GS.scr===S.INV||GS.scr===S.STAIRS))return;
   render();
 }
 function processKill(np,e,f,msgs,floats){const gGain=Math.round(rnd(Math.floor(e.xp/3),e.xp)*(np.goldMult||1));np.xp+=e.xp;np.gold+=gGain;msgs.push(`${e.n} slain! +${e.xp}XP +${gGain}g`);if(e.boss)msgs.push(`BOSS DEFEATED!`);if(Math.random()<(e.boss?.7:.42)){const li=mkItem(f+(e.boss?3:0));np.inv=[...np.inv,li];msgs.push(`Loot: ${li.dn}`);}let pendingTalent=false;while(np.xp>=xpN(np.lv+1)){np.lv++;const s=calcStats(np);np.hp=Math.min(np.hp+40,s.mhp);msgs.push(`LEVEL UP! Lv.${np.lv}!`);pendingTalent=true;}return{np,pendingTalent};}
-function reduce(state,action){switch(action.type){case'START':return initGame(action.name,action.cls);case'RESTART':return{scr:S.TITLE};case'DISMISS':{const sq=state.sq.slice(1);return{...state,scr:sq.length?S.STORY:S.GAME,sq};}case'TOGGLE_INV':return{...state,scr:state.scr===S.INV?S.GAME:S.INV};case'OPEN_MERCHANT':return{...state,scr:S.MERCHANT};case'CLOSE_MERCHANT':return{...state,scr:S.GAME};case'BUY':{const it=state.dg.merchantInv[action.i];if(!it)return state;const cost=Math.round((it.val||20)*2);if(state.p.gold<cost)return{...state,log:['Not enough gold!',...state.log].slice(0,25)};return{...state,p:{...state.p,gold:state.p.gold-cost,inv:[...state.p.inv,it]},dg:{...state.dg,merchantInv:state.dg.merchantInv.filter((_,i)=>i!==action.i)},log:[`Bought ${it.dn} for ${cost}g`,...state.log].slice(0,25)};}case'SELL':{const it=state.p.inv[action.i];if(!it)return state;const val=Math.max(1,Math.round((it.val||10)/2));return{...state,p:{...state.p,gold:state.p.gold+val,inv:state.p.inv.filter((_,i)=>i!==action.i)},log:[`Sold ${it.dn} for ${val}g`,...state.log].slice(0,25)};}case'PICK_TALENT':{const talent=action.talent,np={...state.p,pb:{...state.p.pb}};talent.fn(np);return{...state,scr:S.GAME,p:np,log:[`Talent: ${talent.n}`,...state.log].slice(0,25),pendingTalents:null};}case'MOVE':{if(state.scr!==S.GAME)return state;const{dx,dy}=action;if(state.p.status?.frozen>0){let np=tickStatus({...state.p},[]);np.hp=Math.max(0,np.hp);if(np.hp<=0)return{...state,scr:S.DEATH,p:np};return{...state,p:np,dg:updateVis(state.dg,state.pos,calcStats(np).vis),log:['Frozen! Cannot move.',...state.log].slice(0,25),floats:[],turn:state.turn+1};}const nx=state.pos.x+dx,ny=state.pos.y+dy;if(nx<0||nx>=DW||ny<0||ny>=DH)return state;const tile=state.dg.tiles[ny]?.[nx];if(tile===T.WALL||tile===undefined)return state;let msgs=[],np={...state.p},dg={...state.dg},pos=state.pos,floor=state.floor,sq=[...state.sq],scr=S.GAME,floats=[],pendingTalents=null;const isMoving=dx!==0||dy!==0;const eidx=dg.enemies.findIndex(e=>e.x===nx&&e.y===ny&&e.hp>0);if(eidx!==-1){const{p:p2,e:e2,msgs:m,floats:fl}=pAtk(np,dg.enemies[eidx],'basic');np=p2;floats=[...floats,...fl];msgs.push(...m);let ne=[...dg.enemies];const{hp:eHp,statusDmg:sd}=tickEnemyStatus(e2);if(sd>0){msgs.push(`${e2.n}: ${sd} status`);floats.push({x:e2.x,y:e2.y,txt:sd,col:'#AA44AA'});}const finalE={...e2,hp:eHp};if(finalE.hp<=0){const{np:np2,pendingTalent}=processKill(np,dg.enemies[eidx],floor,msgs,floats);np=np2;ne.splice(eidx,1);if(pendingTalent){pendingTalents=pickTalents();scr=S.TALENT;}}else{ne[eidx]=finalE;const{dmg,dodged,thorns:th}=eAtk(finalE,np);if(dodged)msgs.push('Dodged!');else{np.hp-=dmg;msgs.push(`${finalE.n}: -${dmg} HP`);floats.push({x:pos.x,y:pos.y,txt:`-${dmg}`,col:'#FF4444'});}if(th){ne[eidx]={...finalE,hp:finalE.hp-th};msgs.push(`Thorns: ${th}!`);}if(finalE.statusAtk&&Math.random()<finalE.atkChance&&!dodged){np=applyStatusToPlayer(np,finalE.statusAtk,8);msgs.push(`Afflicted: ${finalE.statusAtk}!`);}}dg={...dg,enemies:ne};}else{if(isMoving){pos={x:nx,y:ny};if(tile===T.MERCHANT){scr=S.MERCHANT;}const iidx=dg.items.findIndex(i=>i.x===nx&&i.y===ny);if(iidx!==-1){const it=dg.items[iidx];np.inv=[...np.inv,it];dg={...dg,items:dg.items.filter((_,i)=>i!==iidx)};msgs.push(`Picked up: ${it.dn}`);}if(tile===T.CHEST){const nt=dg.tiles.map(r=>[...r]);nt[ny][nx]=T.FLOOR;const li=mkItem(floor),g=rnd(10,30)*floor;np.inv=[...np.inv,li];np.gold+=g;msgs.push(`Chest! ${li.dn} + ${g}g`);dg={...dg,tiles:nt};}if(tile===T.STAIRS){floor++;dg=mkDungeon(floor);pos={...dg.start};msgs.push(`Floor ${floor}!`);const cIdx=[1,5,10,15,20].indexOf(floor);if(cIdx!==-1){sq=[...sq,{t:CHTITLES[cIdx],tx:CHTEXTS[cIdx](state.st)}];scr=S.STORY;}else if(Math.random()<0.5){sq=[...sq,{t:`Floor ${floor}`,tx:pick(SEV)(state.st)}];scr=S.STORY;}if(dg.isBossFloor)msgs.push(`A powerful presence awaits...`);}}
+function reduce(state,action){switch(action.type){case'START':return initGame(action.name,action.cls);case'RESTART':return{scr:S.TITLE};case'DISMISS':{const sq=state.sq.slice(1);return{...state,scr:sq.length?S.STORY:S.GAME,sq};}case'TOGGLE_INV':return{...state,scr:state.scr===S.INV?S.GAME:S.INV};case'OPEN_MERCHANT':return{...state,scr:S.MERCHANT};case'CLOSE_MERCHANT':return{...state,scr:S.GAME};case'BUY':{const it=state.dg.merchantInv[action.i];if(!it)return state;const cost=Math.round((it.val||20)*2);if(state.p.gold<cost)return{...state,log:['Not enough gold!',...state.log].slice(0,25)};return{...state,p:{...state.p,gold:state.p.gold-cost,inv:[...state.p.inv,it]},dg:{...state.dg,merchantInv:state.dg.merchantInv.filter((_,i)=>i!==action.i)},log:[`Bought ${it.dn} for ${cost}g`,...state.log].slice(0,25)};}case'SELL':{const it=state.p.inv[action.i];if(!it)return state;const val=Math.max(1,Math.round((it.val||10)/2));return{...state,p:{...state.p,gold:state.p.gold+val,inv:state.p.inv.filter((_,i)=>i!==action.i)},log:[`Sold ${it.dn} for ${val}g`,...state.log].slice(0,25)};}case'PICK_TALENT':{const talent=action.talent,np={...state.p,pb:{...state.p.pb}};talent.fn(np);return{...state,scr:S.GAME,p:np,log:[`Talent: ${talent.n}`,...state.log].slice(0,25),pendingTalents:null};}case'MOVE':{if(state.scr!==S.GAME)return state;const{dx,dy}=action;if(state.p.status?.frozen>0){let np=tickStatus({...state.p},[]);np.hp=Math.max(0,np.hp);if(np.hp<=0)return{...state,scr:S.DEATH,p:np};return{...state,p:np,dg:updateVis(state.dg,state.pos,calcStats(np).vis),log:['Frozen! Cannot move.',...state.log].slice(0,25),floats:[],turn:state.turn+1};}const nx=state.pos.x+dx,ny=state.pos.y+dy;if(nx<0||nx>=DW||ny<0||ny>=DH)return state;const tile=state.dg.tiles[ny]?.[nx];if(tile===T.WALL||tile===undefined)return state;let msgs=[],np={...state.p},dg={...state.dg},pos=state.pos,floor=state.floor,sq=[...state.sq],scr=S.GAME,floats=[],pendingTalents=null;const isMoving=dx!==0||dy!==0;const eidx=dg.enemies.findIndex(e=>e.x===nx&&e.y===ny&&e.hp>0);if(eidx!==-1){const{p:p2,e:e2,msgs:m,floats:fl}=pAtk(np,dg.enemies[eidx],'basic');np=p2;floats=[...floats,...fl];msgs.push(...m);let ne=[...dg.enemies];const{hp:eHp,statusDmg:sd}=tickEnemyStatus(e2);if(sd>0){msgs.push(`${e2.n}: ${sd} status`);floats.push({x:e2.x,y:e2.y,txt:sd,col:'#AA44AA'});}const finalE={...e2,hp:eHp};if(finalE.hp<=0){const killedEnemy=dg.enemies[eidx];
+      const{np:np2,pendingTalent}=processKill(np,killedEnemy,floor,msgs,floats);np=np2;ne.splice(eidx,1);
+      // ── Quest kill tracking ──
+      const fo=state.floorObj;let fop=state.floorObjProg,fod=state.floorObjDone;
+      if(fo&&fo.type===QT.KILL&&!fod){
+        const match=fo.target==='any'||fo.target==='boss'&&killedEnemy.boss||
+          (killedEnemy.n||'').toLowerCase().includes(fo.target);
+        if(match){fop=Math.min(fo.count,fop+1);if(fop>=fo.count){fod=true;msgs.push(`Floor objective complete! +${fo.reward.gold}g`);np.gold+=fo.reward.gold;np.xp+=fo.reward.xp||0;}}
+      }
+      const aq=state.activeQuest;let qp=state.questProg,qd=state.questDone;
+      if(aq&&aq.type===QT.KILL&&!qd){
+        const qmatch=aq.target==='any'||aq.target==='elite'&&killedEnemy.boss||
+          (killedEnemy.n||'').toLowerCase().includes(aq.target)||
+          (killedEnemy.sp||'').toLowerCase().includes(aq.target);
+        if(qmatch){qp=Math.min(aq.count,qp+1);if(qp>=aq.count){qd=true;msgs.push(`Quest objective complete! Talk to the quest giver.`);}}
+      }
+      state={...state,floorObjProg:fop,floorObjDone:fod,questProg:qp,questDone:state.questDone||qd};
+      if(pendingTalent){pendingTalents=pickTalents();scr=S.TALENT;}}else{ne[eidx]=finalE;const{dmg,dodged,thorns:th}=eAtk(finalE,np);if(dodged)msgs.push('Dodged!');else{np.hp-=dmg;msgs.push(`${finalE.n}: -${dmg} HP`);floats.push({x:pos.x,y:pos.y,txt:`-${dmg}`,col:'#FF4444'});}if(th){ne[eidx]={...finalE,hp:finalE.hp-th};msgs.push(`Thorns: ${th}!`);}if(finalE.statusAtk&&Math.random()<finalE.atkChance&&!dodged){np=applyStatusToPlayer(np,finalE.statusAtk,8);msgs.push(`Afflicted: ${finalE.statusAtk}!`);}}dg={...dg,enemies:ne};}else{if(isMoving){pos={x:nx,y:ny};if(tile===T.MERCHANT){scr=S.MERCHANT;}const iidx=dg.items.findIndex(i=>i.x===nx&&i.y===ny);if(iidx!==-1){const it=dg.items[iidx];np.inv=[...np.inv,it];dg={...dg,items:dg.items.filter((_,i)=>i!==iidx)};msgs.push(`Picked up: ${it.dn}`);}if(tile===T.CHEST){const nt=dg.tiles.map(r=>[...r]);nt[ny][nx]=T.FLOOR;const li=mkItem(floor),g=rnd(10,30)*floor;np.inv=[...np.inv,li];np.gold+=g;msgs.push(`Chest! ${li.dn} + ${g}g`);dg={...dg,tiles:nt};}if(tile===T.STAIRS){
+      if(!state.floorObjDone){
+        msgs.push(`Complete the floor objective first: ${state.floorObj?.label||'objective'}`);
+        msgs.push(`Progress: ${Math.min(state.floorObj?.count||1,state.floorObjProg||0)}/${state.floorObj?.count||1}`);
+      }else{
+        scr=S.STAIRS;
+      }
+    }
+    // Check adjacency to NPCs for talk prompt
+    const adjNpc=dg.npcs&&dg.npcs.find(n=>n.hp!==0&&Math.abs(n.x-nx)<=1&&Math.abs(n.y-ny)<=1);
+    if(adjNpc&&!adjNpc.talked){msgs.push(`Talk to ${adjNpc.name}: press [E] / tap TALK`);}}
 }
-np=tickStatus(np,msgs);if(np.hp<=0)return{...state,scr:S.DEATH,p:np,log:[...msgs,...state.log].slice(0,30)};if(np.scd>0)np.scd--;const maxHp=calcStats(np).mhp;if(np.hp>maxHp)np.hp=maxHp;dg=updateVis(dg,pos,calcStats(np).vis);return{...state,scr:pendingTalents?S.TALENT:scr,floor,p:np,dg,pos,sq,log:[...msgs,...state.log].slice(0,25),turn:state.turn+1,floats,pendingTalents};}
-case'SKILL':{if(state.scr!==S.GAME)return state;if(state.p.scd>0)return{...state,log:[`CD: ${state.p.scd}t`,...state.log].slice(0,25)};const SKILL_RANGE=state.p.cls==='tact'?7:1;const adj=state.dg.enemies.filter(e=>e.hp>0&&cdist(e,state.pos)<=SKILL_RANGE).sort((a,b)=>cdist(a,state.pos)-cdist(b,state.pos));if(!adj.length){const msg=state.p.cls==='tact'?'No target in drone range!':'No adjacent enemy!';return{...state,log:[msg,...state.log].slice(0,25)};}const ti=state.dg.enemies.indexOf(adj[0]);const{p:p2,e:e2,msgs:m,floats:fl}=pAtk({...state.p},state.dg.enemies[ti],'skill');let np={...p2},ne=[...state.dg.enemies],msgs=[...m],floats=[...fl],pendingTalents=null,scr=S.GAME;if(e2.hp<=0){const{np:np2,pendingTalent}=processKill(np,state.dg.enemies[ti],state.floor,msgs,floats);np=np2;ne.splice(ti,1);if(pendingTalent){pendingTalents=pickTalents();scr=S.TALENT;}}else{ne[ti]=e2;const{dmg,dodged}=eAtk(e2,np);if(!dodged){np.hp-=dmg;msgs.push(`${e2.n}: -${dmg} HP`);floats.push({x:state.pos.x,y:state.pos.y,txt:`-${dmg}`,col:'#FF4444'});}else msgs.push('Dodge!');}np=tickStatus(np,msgs);if(np.hp<=0)return{...state,scr:S.DEATH,p:np,log:[...msgs,...state.log].slice(0,30)};const maxHp=calcStats(np).mhp;if(np.hp>maxHp)np.hp=maxHp;const dg=updateVis({...state.dg,enemies:ne},state.pos,calcStats(np).vis);return{...state,scr,p:np,dg,log:[...msgs,...state.log].slice(0,25),turn:state.turn+1,floats,pendingTalents};}
+np=tickStatus(np,msgs);if(np.hp<=0)return{...state,scr:S.DEATH,p:np,log:[...msgs,...state.log].slice(0,30)};if(np.scd>0)np.scd--;const maxHp=calcStats(np).mhp;if(np.hp>maxHp)np.hp=maxHp;dg=updateVis(dg,pos,calcStats(np).vis);// ── Explore objective tracking ─────────────────────────────────────────────
+  let finFop=state.floorObjProg,finFod=state.floorObjDone;
+  if(state.floorObj&&state.floorObj.type===QT.EXPLORE&&!state.floorObjDone){
+    // Count floor tiles that are SEEN or LIT
+    let litCount=0,totalFloor=0;
+    for(let fy=0;fy<DH;fy++)for(let fx=0;fx<DW;fx++){
+      if(dg.tiles[fy][fx]===T.FLOOR||dg.tiles[fy][fx]===T.STAIRS||dg.tiles[fy][fx]===T.CHEST||dg.tiles[fy][fx]===T.MERCHANT){
+        totalFloor++;
+        if(dg.vis[fy][fx]!==V.DARK)litCount++;
+      }
+    }
+    const explorePct=totalFloor>0?Math.round(litCount/totalFloor*100):0;
+    finFop=explorePct;
+    const needed=state.floorObj.pct||70;
+    if(explorePct>=needed&&!finFod){
+      finFod=true;
+      msgs.push(`Floor explored! Objective complete! +${state.floorObj.reward.gold}g`);
+      np.gold+=(state.floorObj.reward.gold||0);
+      np.xp+=(state.floorObj.reward.xp||0);
+    }
+  }else if(state.floorObj&&state.floorObj.type!==QT.EXPLORE){
+    finFop=state.floorObjProg;finFod=state.floorObjDone;
+  }
+  return{...state,scr:pendingTalents?S.TALENT:scr,floor,p:np,dg,pos,sq,floorObjProg:finFop,floorObjDone:finFod,questProg:state.questProg,questDone:state.questDone,activeQuest:state.activeQuest,itemsUsed:state.itemsUsed,log:[...msgs,...state.log].slice(0,25),turn:state.turn+1,floats,pendingTalents};}
+case'SKILL':{if(state.scr!==S.GAME)return state;if(state.p.scd>0)return{...state,log:[`Ability recharging...`,...state.log].slice(0,25)};const SKILL_RANGE=state.p.cls==='tact'?7:1;const adj=state.dg.enemies.filter(e=>e.hp>0&&cdist(e,state.pos)<=SKILL_RANGE).sort((a,b)=>cdist(a,state.pos)-cdist(b,state.pos));if(!adj.length){const msg=state.p.cls==='tact'?'No target in drone range!':'No adjacent enemy!';return{...state,log:[msg,...state.log].slice(0,25)};}const ti=state.dg.enemies.indexOf(adj[0]);const{p:p2,e:e2,msgs:m,floats:fl}=pAtk({...state.p},state.dg.enemies[ti],'skill');let np={...p2},ne=[...state.dg.enemies],msgs=[...m],floats=[...fl],pendingTalents=null,scr=S.GAME;if(e2.hp<=0){
+    const killedE=state.dg.enemies[ti];
+    const{np:np2,pendingTalent}=processKill(np,killedE,state.floor,msgs,floats);np=np2;ne.splice(ti,1);
+    // ── Quest kill tracking (same as MOVE) ──
+    const sfo=state.floorObj;let sfop=state.floorObjProg,sfod=state.floorObjDone;
+    if(sfo&&sfo.type===QT.KILL&&!sfod){
+      const smatch=sfo.target==='any'||sfo.target==='boss'&&killedE.boss||
+        (killedE.n||'').toLowerCase().includes(sfo.target);
+      if(smatch){sfop=Math.min(sfo.count,sfop+1);if(sfop>=sfo.count){sfod=true;msgs.push(`Floor objective complete! +${sfo.reward.gold}g`);np.gold+=sfo.reward.gold;np.xp+=sfo.reward.xp||0;}}
+    }
+    const saq=state.activeQuest;let sqp=state.questProg,sqd=state.questDone;
+    if(saq&&saq.type===QT.KILL&&!sqd){
+      const sqmatch=saq.target==='any'||saq.target==='elite'&&killedE.boss||
+        (killedE.n||'').toLowerCase().includes(saq.target)||
+        (killedE.sp||'').toLowerCase().includes(saq.target);
+      if(sqmatch){sqp=Math.min(saq.count,sqp+1);if(sqp>=saq.count){sqd=true;msgs.push(`Quest objective complete! Talk to the quest giver.`);}}
+    }
+    state={...state,floorObjProg:sfop,floorObjDone:sfod,questProg:sqp,questDone:state.questDone||sqd};
+    if(pendingTalent){pendingTalents=pickTalents();scr=S.TALENT;}}else{ne[ti]=e2;const{dmg,dodged}=eAtk(e2,np);if(!dodged){np.hp-=dmg;msgs.push(`${e2.n}: -${dmg} HP`);floats.push({x:state.pos.x,y:state.pos.y,txt:`-${dmg}`,col:'#FF4444'});}else msgs.push('Dodge!');}np=tickStatus(np,msgs);if(np.hp<=0)return{...state,scr:S.DEATH,p:np,log:[...msgs,...state.log].slice(0,30)};const maxHp=calcStats(np).mhp;if(np.hp>maxHp)np.hp=maxHp;const dg=updateVis({...state.dg,enemies:ne},state.pos,calcStats(np).vis);return{...state,scr,p:np,dg,floorObjProg:state.floorObjProg,floorObjDone:state.floorObjDone,questProg:state.questProg,activeQuest:state.activeQuest,log:[...msgs,...state.log].slice(0,25),turn:state.turn+1,floats,pendingTalents};}
 case'USE':{const it=state.p.inv[action.i];if(!it)return state;let np={...state.p},msgs=[];const st2=calcStats(np);if(it.type==='consumable'){if(it.hp){const mult=np.potMult||1;const h=Math.min(Math.round(it.hp*mult),st2.mhp-np.hp);np.hp+=h;msgs.push(`+${h} HP`);}if(it.str){np.buffs=[...(np.buffs||[]),{str:it.str,turns:it.dur||8}];msgs.push(`+${it.str} STR`);}if(it.freeze){const ne=state.dg.enemies.map(e=>{if(e.hp>0&&cdist(e,state.pos)<=4)return applyStatusToEnemy(e,'freeze');return e;});msgs.push('Freeze Scroll!');np.inv=np.inv.filter((_,i)=>i!==action.i);return{...state,p:np,dg:{...state.dg,enemies:ne},log:[...msgs,...state.log].slice(0,25)};}if(it.poison){const ne=state.dg.enemies.map(e=>{if(e.hp>0&&cdist(e,state.pos)<=3)return applyStatusToEnemy(e,'poison');return e;});msgs.push('Poison Flask!');np.inv=np.inv.filter((_,i)=>i!==action.i);return{...state,p:np,dg:{...state.dg,enemies:ne},log:[...msgs,...state.log].slice(0,25)};}if(it.mdmg){const en=state.dg.enemies.find(e=>e.hp>0);if(en){const ei=state.dg.enemies.indexOf(en);const ne=[...state.dg.enemies];const nd=en.hp-it.mdmg;if(nd<=0){const{np:np2}=processKill(np,en,state.floor,msgs,[]);np=np2;ne.splice(ei,1);}else{ne[ei]={...en,hp:nd};msgs.push(`Scroll: ${it.mdmg} to ${en.n}`);}np.inv=np.inv.filter((_,i)=>i!==action.i);return{...state,p:np,dg:{...state.dg,enemies:ne},log:[...msgs,...state.log].slice(0,25)};}}np.inv=np.inv.filter((_,i)=>i!==action.i);}else{const slot=it.type,old=np.eq[slot];np.eq={...np.eq,[slot]:it};np.inv=np.inv.filter((_,i)=>i!==action.i);if(old)np.inv=[...np.inv,old];const s=calcStats(np);np.hp=Math.min(np.hp,s.mhp);msgs.push(`Equipped: ${it.dn}`);}return{...state,p:np,log:[...msgs,...state.log].slice(0,25)};}
 case'DROP':{const it=state.p.inv[action.i];if(!it)return state;return{...state,p:{...state.p,inv:state.p.inv.filter((_,i)=>i!==action.i)},dg:{...state.dg,items:[...state.dg.items,{...it,x:state.pos.x,y:state.pos.y}]},log:[`Dropped: ${it.dn}`,...state.log].slice(0,25)};}
 case'ENEMY_TICK':{
@@ -147,11 +607,12 @@ case'ENEMY_TICK':{
     if(!ne2.aggroed&&dist<=AGGRO_R&&inSight){ne2.aggroed=true;msgs.push(`${ne2.n} spotted you!`);}
     else if(ne2.aggroed&&dist>LEASH_R){ne2.aggroed=false;ne2.patrolTimer=0;msgs.push(`${ne2.n} lost sight of you.`);}
     if((ne2.status?.frozen||0)>0)return ne2;
-    if(dist<=1&&ne2.aggroed){
+    ne2.atkTimer=Math.max(0,(ne2.atkTimer||0)-1);if(dist<=1&&ne2.aggroed&&ne2.atkTimer<=0){
       const{dmg,dodged,thorns:th}=eAtk(ne2,np);
       if(dodged)msgs.push(`Dodged ${ne2.n}!`);
       else{np.hp-=dmg;msgs.push(`${ne2.n}: -${dmg} HP`);floats.push({x:pos.x,y:pos.y,txt:`-${dmg}`,col:'#FF4444'});}
       if(th){ne2={...ne2,hp:ne2.hp-th};msgs.push(`Thorns: ${th}!`);}
+      ne2.atkTimer=Math.round(12-(ne2.spd||5));
       if(ne2.statusAtk&&Math.random()<ne2.atkChance&&!dodged){np=applyStatusToPlayer(np,ne2.statusAtk);msgs.push(`Afflicted: ${ne2.statusAtk}!`);}
       return ne2;
     }
@@ -172,7 +633,84 @@ case'ENEMY_TICK':{
   if(np.hp<=0)return{...state,scr:S.DEATH,p:np,log:[...msgs,...state.log].slice(0,30)};
   const maxHp2=calcStats(np).mhp;if(np.hp>maxHp2)np.hp=maxHp2;
   dg=updateVis({...dg,enemies:ne},pos,calcStats(np).vis);
+  // ── Enemy respawn: refill rooms far from player ───────────────────────────
+  const RESPAWN_DIST=8;const MAX_ENEMIES=28;
+  if(!state.dg.isBossFloor&&dg.enemies.length<MAX_ENEMIES){
+    (dg.rooms||[]).forEach(room=>{
+      const roomEs=dg.enemies.filter(e=>!e.boss&&e.x>=room.x&&e.x<room.x+room.w&&e.y>=room.y&&e.y<room.y+room.h);
+      const dist=Math.max(Math.abs(state.pos.x-room.cx),Math.abs(state.pos.y-room.cy));
+      if(roomEs.length===0&&dist>RESPAWN_DIST&&dg.vis[room.cy]?.[room.cx]!==V.LIT&&Math.random()<0.15){
+        const ne=mkEnemy(state.floor);let placed=false;
+        for(let a=0;a<10&&!placed;a++){
+          const ex=room.x+rnd(1,room.w-2),ey=room.y+rnd(1,room.h-2);
+          if(dg.tiles[ey]?.[ex]===T.FLOOR&&!dg.enemies.find(e=>e.x===ex&&e.y===ey)){
+            ne.x=ex;ne.y=ey;ne.aggroed=false;ne.patrolTimer=rnd(1,4);
+            dg={...dg,enemies:[...dg.enemies,ne]};placed=true;
+          }
+        }
+      }
+    });
+  }
   return{...state,p:np,dg,log:[...msgs,...state.log].slice(0,25),floats,turn:state.turn+1};
+}
+case'ACCEPT_QUEST':{
+  const qDef=NPC_QUESTS[action.floor];
+  if(!qDef)return state;
+  return{...state,activeQuest:{...qDef,floor:action.floor},questProg:0,questDone:false,
+    log:[`Quest accepted: ${qDef.title}`,...state.log].slice(0,25)};
+}
+case'COMPLETE_QUEST':{
+  const q=state.activeQuest;if(!q)return state;
+  let np={...state.p};
+  np.gold+=(q.reward.gold||0);np.xp+=(q.reward.xp||0);
+  if(q.reward.hp)np.hp=Math.min(calcStats(np).mhp,np.hp+(q.reward.hp||0));
+  if(q.reward.item){const it=mkItem(state.floor+2);np.inv=[...np.inv,it];}
+  // Show completion dialogue
+  const compSq=[{t:q.title+' — Complete!',tx:q.complete_text,isNpc:true,npcIcon:'✅',
+    reward:q.reward,questComplete:true},...state.sq];
+  const msgs=[`Quest complete: ${q.title}! +${q.reward.gold||0}g +${q.reward.xp||0}XP${q.reward.item?' +item':''}`];
+  return{...state,p:np,sq:compSq,scr:S.STORY,activeQuest:null,questDone:true,
+    log:[...msgs,...state.log].slice(0,25)};
+}
+case'TALK_ADJ':{
+  const adj2=state.dg.npcs&&state.dg.npcs.find(n=>Math.abs(n.x-state.pos.x)<=1&&Math.abs(n.y-state.pos.y)<=1);
+  if(!adj2)return state;
+  return reduce(state,{type:'TALK',id:adj2.id});
+}
+case'TALK':{
+  const npc=state.dg.npcs.find(n=>n.id===action.id);
+  if(!npc)return state;
+  const newNpcs=state.dg.npcs.map(n=>n.id===action.id?{...n,talked:true}:n);
+  const newDg={...state.dg,npcs:newNpcs};
+  const rawText=typeof npc.text==='function'?npc.text(state.p.cls):npc.text;
+  const dialogText=typeof rawText==='function'?rawText(state.p.cls):rawText;
+  // Check if this NPC has a quest and player hasn't accepted/done it
+  const npcFloor=state.dg.npcs.find(n=>n.id===action.id);
+  const questDef=NPC_QUESTS[state.floor];
+  const hasQuest=questDef&&!state.activeQuest&&!state.questDone;
+  const sq=[{t:npc.title,tx:dialogText,isNpc:true,npcIcon:npc.icon,
+    questOffer:hasQuest?{...questDef,floor:state.floor}:null},...state.sq];
+  return{...state,dg:newDg,sq,scr:S.STORY};
+}
+case'ASCEND':{
+  let floor2=state.floor+1,sq2=[...state.sq],scr2=S.GAME;
+  let dg2=mkDungeon(floor2),pos2={...dg2.start};
+  let msgs2=[`Descended to floor ${floor2}!`];
+  const mainStory=STORY_FLOORS[floor2];
+  const sideQ=state.story&&state.story.sideQuests.find(s=>s.floor===floor2&&(!s.cls||s.cls===state.p.cls));
+  if(mainStory&&!(state.story&&state.story.usedStory.has(floor2))){
+    sq2=[...sq2,{t:mainStory.title,tx:mainStory.text(state.p.cls,state.p.name)}];scr2=S.STORY;
+    if(state.story)state.story.usedStory.add(floor2);
+  }else if(sideQ&&floor2<=50){
+    sq2=[...sq2,{t:sideQ.title,tx:sideQ.text()}];scr2=S.STORY;
+  }
+  if(dg2.isBossFloor&&floor2<=50)msgs2.push(`A powerful presence awaits...`);
+  dg2=updateVis(dg2,pos2,calcStats(state.p).vis);
+  const floorObj2=FLOOR_OBJECTIVES(floor2);
+  if(floor2===50&&!state.storyComplete){
+    sq2=[...sq2,{t:STORY_FLOORS[50].title,tx:STORY_FLOORS[50].text(state.p.cls,state.p.name),isEnding:true}];scr2=S.STORY;
+  }
+  return{...state,scr:scr2,floor:floor2,dg:dg2,pos:pos2,sq:sq2,story:state.story,floorObj:floorObj2,floorObjProg:0,floorObjDone:false,activeQuest:null,questProg:0,questDone:false,itemsUsed:0,log:[...msgs2,...state.log].slice(0,25),storyComplete:state.storyComplete||(floor2>=50)};
 }
 default:return state;}}
 const canvas=document.createElement('canvas');canvas.style.cssText='display:block;image-rendering:pixelated;image-rendering:crisp-edges;flex-shrink:0;';let canvasW=0,canvasH=0,pendingDraw=null;
@@ -356,6 +894,62 @@ function drawGame(ctx,state){
     const sx=(it.x-camX)*s,sy=(it.y-camY)*s;
     if(sx>-s&&sx<canvasW+s&&sy>-s&&sy<canvasH+s)drawFloorItem(ctx,it,sx,sy,s);
   });
+  // Draw NPCs — large, obvious, animated
+  (dg.npcs||[]).forEach(npc=>{
+    if(dg.vis[npc.y]?.[npc.x]!==V.LIT)return;
+    const sx=(npc.x-camX)*s,sy=(npc.y-camY)*s;
+    if(sx<-s||sx>canvasW+s||sy<-s||sy>canvasH+s)return;
+    const hasQuest=NPC_QUESTS[state.floor]&&!state.activeQuest&&!state.questDone;
+    const questReady=state.activeQuest&&state.questProg>=(state.activeQuest.count||1)&&state.activeQuest.floor===state.floor&&!state.questDone;
+    const bobY=Math.sin(t*0.003+npc.x)*3;
+
+    // Large glow halo — very visible
+    const glowR=s*1.6;
+    const gc=ctx.createRadialGradient(sx+s/2,sy+s/2+bobY,4,sx+s/2,sy+s/2+bobY,glowR);
+    const glowAlpha=hasQuest||questReady?0.55:0.25;
+    const glowCol=questReady?'255,215,0':hasQuest?'255,255,80':npc.col.replace('#','').match(/../g).map(x=>parseInt(x,16)).join(',');
+    gc.addColorStop(0,`rgba(${glowCol},${glowAlpha})`);
+    gc.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=gc;ctx.fillRect(sx-s*.6,sy-s*.6+bobY,s*2.2,s*2.2);
+
+    // NPC base tile (dark background)
+    ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(sx+2,sy+2,s-4,s-4);
+    ctx.strokeStyle=questReady?'#FFD700':hasQuest?'#FFFF44':npc.col;
+    ctx.lineWidth=2;ctx.strokeRect(sx+2,sy+2,s-4,s-4);
+
+    // Large emoji icon — centered, bob
+    ctx.font=`${Math.round(s*.7)}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(npc.icon,sx+s/2,sy+s/2+bobY);
+
+    // Name banner below icon
+    ctx.font=`bold ${Math.round(s*.22)}px monospace`;ctx.textAlign='center';
+    const nameW=ctx.measureText(npc.name).width+8;
+    ctx.fillStyle='rgba(0,0,0,0.85)';
+    ctx.fillRect(sx+s/2-nameW/2,sy+s*.72,nameW,13);
+    ctx.fillStyle=questReady?'#FFD700':hasQuest?'#FFFF66':npc.col;
+    ctx.fillText(npc.name,sx+s/2,sy+s*.82);
+
+    // Quest indicator — bouncing ! or ✓ above head
+    if(!npc.talked||hasQuest||questReady){
+      const indY=sy-10+Math.sin(t*0.005+npc.x)*4+bobY;
+      if(questReady){
+        // Gold ✓ — quest complete, come collect
+        ctx.font=`bold ${Math.round(s*.5)}px monospace`;
+        ctx.fillStyle='#FFD700';ctx.textAlign='center';
+        ctx.fillText('✓',sx+s/2,indY);
+      }else if(hasQuest&&!npc.talked){
+        // Bright yellow ! quest available
+        ctx.font=`bold ${Math.round(s*.55)}px monospace`;
+        ctx.fillStyle='#FFFF00';ctx.textAlign='center';
+        ctx.fillText('!',sx+s/2,indY);
+      }else if(!npc.talked){
+        // White ? — has dialogue, no quest
+        ctx.font=`bold ${Math.round(s*.45)}px monospace`;
+        ctx.fillStyle='#FFFFFF';ctx.textAlign='center';
+        ctx.fillText('?',sx+s/2,indY);
+      }
+    }
+  });
   dg.enemies.forEach(e=>{
     if(e.hp<=0||dg.vis[e.y]?.[e.x]!==V.LIT)return;
     const sx=(e.x-camX)*s,sy=(e.y-camY)*s;
@@ -472,11 +1066,14 @@ function drawPlayer(ctx,x,y,s,cls){
     // 5 o'clock stubble
     ctx.fillStyle='rgba(60,40,20,0.28)';ctx.fillRect(bx+s*.3,by+s*.25,s*.38,s*.1);
     ctx.fillStyle='rgba(60,40,20,0.18)';ctx.fillRect(bx+s*.29,by+s*.19,4,s*.14);ctx.fillRect(bx+s*.58,by+s*.19,4,s*.14);
-    // Hazel eyes (amber-brown with green fleck)
-    ctx.fillStyle='#050205';ctx.fillRect(bx+s*.34,by+s*.17,4,3);ctx.fillRect(bx+s*.56,by+s*.17,4,3);
-    ctx.fillStyle='#fff';ctx.fillRect(bx+s*.34,by+s*.17,2,2);ctx.fillRect(bx+s*.56,by+s*.17,2,2);
-    ctx.fillStyle='#8B6914';ctx.fillRect(bx+s*.35,by+s*.18,1.5,1.5);ctx.fillRect(bx+s*.57,by+s*.18,1.5,1.5);
-    ctx.fillStyle='rgba(60,100,30,0.6)';ctx.fillRect(bx+s*.35,by+s*.17,1,1);ctx.fillRect(bx+s*.57,by+s*.17,1,1);
+    // Hazel eyes (amber-brown with green fleck) with blink every ~4s
+    const eyeH=Math.sin(t*0.0008*Math.PI)>0.97?1:3;
+    ctx.fillStyle='#050205';ctx.fillRect(bx+s*.34,by+s*.17,4,eyeH);ctx.fillRect(bx+s*.56,by+s*.17,4,eyeH);
+    if(eyeH>1){
+      ctx.fillStyle='#fff';ctx.fillRect(bx+s*.34,by+s*.17,2,2);ctx.fillRect(bx+s*.56,by+s*.17,2,2);
+      ctx.fillStyle='#8B6914';ctx.fillRect(bx+s*.35,by+s*.18,1.5,1.5);ctx.fillRect(bx+s*.57,by+s*.18,1.5,1.5);
+      ctx.fillStyle='rgba(60,100,30,0.6)';ctx.fillRect(bx+s*.35,by+s*.17,1,1);ctx.fillRect(bx+s*.57,by+s*.17,1,1);
+    }
     // Charming smirk
     ctx.fillStyle='rgba(0,0,0,0.4)';ctx.fillRect(bx+s*.42,by+s*.29,s*.2,1.5);
     ctx.fillRect(bx+s*.56,by+s*.28,s*.06,3);
@@ -602,9 +1199,7 @@ function drawPlayer(ctx,x,y,s,cls){
     ctx.fillStyle='#3A2810';ctx.fillRect(bx+s*.35,by+s*.18,1.5,1.5);ctx.fillRect(bx+s*.56,by+s*.18,1.5,1.5);
     ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(bx+s*.38,by+s*.27,s*.22,2);
   }
-
-// ─── ANIME: VRchat enthusiast ─────────────────────────────────────────────
-  else{
+  else{ // ANIME: VRchat enthusiast
     // Legs — sweatpants, rounder/shorter
     const lly=by+s*.69+(isWalking?-footSwing*.8:0),rly=by+s*.69+(isWalking?footSwing*.8:0);
     ctx.fillStyle='#2a1a3a';ctx.fillRect(bx+s*.26,lly,s*.22,s*.25);ctx.fillRect(bx+s*.52,rly,s*.22,s*.25);
@@ -634,11 +1229,14 @@ function drawPlayer(ctx,x,y,s,cls){
     // Cat ears! (the key detail)
     ctx.fillStyle='#8B3DBB';ctx.fillRect(bx+s*.24,by-2,8,10);ctx.fillRect(bx+s*.6,by-2,8,10);
     ctx.fillStyle='#FFB6C1';ctx.fillRect(bx+s*.25,by,5,7);ctx.fillRect(bx+s*.61,by,5,7); // pink inner
-    // Eyes — big anime eyes (slightly glazed, looking at screen)
-    ctx.fillStyle='#050205';ctx.fillRect(bx+s*.31,by+s*.15,6,5);ctx.fillRect(bx+s*.55,by+s*.15,6,5);
-    ctx.fillStyle='#fff';ctx.fillRect(bx+s*.31,by+s*.15,4,4);ctx.fillRect(bx+s*.55,by+s*.15,4,4);
-    ctx.fillStyle='#CC44AA';ctx.fillRect(bx+s*.32,by+s*.16,2.5,2.5);ctx.fillRect(bx+s*.56,by+s*.16,2.5,2.5); // pink irises
-    ctx.fillStyle='#fff';ctx.fillRect(bx+s*.33,by+s*.16,1,1);ctx.fillRect(bx+s*.57,by+s*.16,1,1); // highlight
+    // Big anime eyes with slow deliberate blink (~3s cycle)
+    const animeBlink=Math.sin(t*0.001*Math.PI)>0.92?1:5;
+    ctx.fillStyle='#050205';ctx.fillRect(bx+s*.31,by+s*.15,6,animeBlink);ctx.fillRect(bx+s*.55,by+s*.15,6,animeBlink);
+    if(animeBlink>1){
+      ctx.fillStyle='#fff';ctx.fillRect(bx+s*.31,by+s*.15,4,4);ctx.fillRect(bx+s*.55,by+s*.15,4,4);
+      ctx.fillStyle='#CC44AA';ctx.fillRect(bx+s*.32,by+s*.16,2.5,2.5);ctx.fillRect(bx+s*.56,by+s*.16,2.5,2.5);
+      ctx.fillStyle='#fff';ctx.fillRect(bx+s*.33,by+s*.16,1,1);ctx.fillRect(bx+s*.57,by+s*.16,1,1);
+    }
     ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(bx+s*.38,by+s*.27,s*.22,2);
     // Maple leaf patch on hoodie (Canadian!)
     ctx.fillStyle='#CC2222';ctx.fillRect(bx+s*.44,by+s*.44,6,6);
@@ -812,6 +1410,144 @@ function drawFloorItem(ctx,it,x,y,s){
 
 
 let selInv=-1,showMap=false;
+
+// ═══════════════════════════════════════════════════════════════════════
+// AUDIO ENGINE — Web Audio API + Speech Synthesis
+// ═══════════════════════════════════════════════════════════════════════
+const AUD = {
+  _ctx:null, _mGain:null, _sfxGain:null, _musicGain:null,
+  _music:null, _musicType:null, _osc:[], enabled:true, sfxVol:0.7, musicVol:0.35,
+
+  ctx(){
+    if(!this._ctx){
+      this._ctx=new(window.AudioContext||window.webkitAudioContext)();
+      this._mGain=this._ctx.createGain(); this._mGain.gain.value=1; this._mGain.connect(this._ctx.destination);
+      this._sfxGain=this._ctx.createGain(); this._sfxGain.gain.value=this.sfxVol; this._sfxGain.connect(this._mGain);
+      this._musicGain=this._ctx.createGain(); this._musicGain.gain.value=this.musicVol; this._musicGain.connect(this._mGain);
+    }
+    if(this._ctx.state==='suspended')this._ctx.resume();
+    return this._ctx;
+  },
+
+  // ── Sound effects ─────────────────────────────────────────────────────────
+  play(type){
+    if(!this.enabled)return;
+    try{const c=this.ctx(),g=c.createGain(),t=c.currentTime;g.connect(this._sfxGain);
+    const sfx={
+      hit:()=>{const o=c.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(220,t);o.frequency.exponentialRampToValueAtTime(80,t+0.08);g.gain.setValueAtTime(0.5,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.1);o.connect(g);o.start(t);o.stop(t+0.1);},
+      playerHit:()=>{const o=c.createOscillator();o.type='square';o.frequency.setValueAtTime(180,t);o.frequency.exponentialRampToValueAtTime(60,t+0.15);g.gain.setValueAtTime(0.4,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.18);o.connect(g);o.start(t);o.stop(t+0.2);},
+      death:()=>{const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(400,t);o.frequency.exponentialRampToValueAtTime(30,t+0.4);g.gain.setValueAtTime(0.3,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.4);o.connect(g);o.start(t);o.stop(t+0.45);},
+      pickup:()=>{const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(880,t);o.frequency.setValueAtTime(1320,t+0.05);g.gain.setValueAtTime(0.25,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.15);o.connect(g);o.start(t);o.stop(t+0.18);},
+      levelup:()=>{[523,659,784,1047].forEach((f,i)=>{const o=c.createOscillator();o.type='sine';o.frequency.value=f;const lg=c.createGain();lg.gain.setValueAtTime(0.3,t+i*0.08);lg.gain.exponentialRampToValueAtTime(0.001,t+i*0.08+0.15);o.connect(lg);lg.connect(this._sfxGain);o.start(t+i*0.08);o.stop(t+i*0.08+0.18);});},
+      questDone:()=>{[392,523,659,784,1047].forEach((f,i)=>{const o=c.createOscillator();o.type='triangle';o.frequency.value=f;const lg=c.createGain();lg.gain.setValueAtTime(0.35,t+i*0.1);lg.gain.exponentialRampToValueAtTime(0.001,t+i*0.1+0.2);o.connect(lg);lg.connect(this._sfxGain);o.start(t+i*0.1);o.stop(t+i*0.1+0.22);});},
+      stairs:()=>{const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(400,t);o.frequency.linearRampToValueAtTime(200,t+0.3);const o2=c.createOscillator();o2.type='sine';o2.frequency.setValueAtTime(600,t+0.05);o2.frequency.linearRampToValueAtTime(300,t+0.35);g.gain.setValueAtTime(0.2,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.4);o.connect(g);o2.connect(g);o.start(t);o2.start(t+0.05);o.stop(t+0.4);o2.stop(t+0.4);},
+      skill:()=>{const o=c.createOscillator();o.type='square';o.frequency.setValueAtTime(660,t);o.frequency.exponentialRampToValueAtTime(110,t+0.18);const o2=c.createOscillator();o2.type='sine';o2.frequency.setValueAtTime(880,t);g.gain.setValueAtTime(0.4,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.2);o.connect(g);o2.connect(g);o.start(t);o2.start(t);o.stop(t+0.2);o2.stop(t+0.2);},
+      click:()=>{const o=c.createOscillator();o.type='sine';o.frequency.value=1200;g.gain.setValueAtTime(0.12,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.04);o.connect(g);o.start(t);o.stop(t+0.05);},
+      chest:()=>{[523,784,1047,1568].forEach((f,i)=>{const o=c.createOscillator();o.type='triangle';o.frequency.value=f;const lg=c.createGain();lg.gain.setValueAtTime(0.28,t+i*0.07);lg.gain.exponentialRampToValueAtTime(0.001,t+i*0.07+0.18);o.connect(lg);lg.connect(this._sfxGain);o.start(t+i*0.07);o.stop(t+i*0.07+0.2);});},
+      talk:()=>{const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(440,t);o.frequency.setValueAtTime(550,t+0.04);g.gain.setValueAtTime(0.18,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.1);o.connect(g);o.start(t);o.stop(t+0.12);},
+    };
+    if(sfx[type])sfx[type]();}catch(e){}
+  },
+
+  // ── Procedural dungeon music ──────────────────────────────────────────────
+  playMusic(type){
+    if(!this.enabled||this._musicType===type)return;
+    this.stopMusic();
+    try{const c=this.ctx();this._musicType=type;this._osc=[];
+    const nodes=[];
+    if(type==='explore'){
+      // Dark ambient: two slow drones + filtered noise + occasional melodic notes
+      const drone1=c.createOscillator();drone1.type='sine';drone1.frequency.value=55;
+      const drone2=c.createOscillator();drone2.type='sine';drone2.frequency.value=82.4;
+      const drone3=c.createOscillator();drone3.type='triangle';drone3.frequency.value=110;
+      const dg1=c.createGain();dg1.gain.value=0.18;
+      const dg2=c.createGain();dg2.gain.value=0.12;
+      const dg3=c.createGain();dg3.gain.value=0.06;
+      // Slow LFO modulation on drone 3
+      const lfo=c.createOscillator();lfo.type='sine';lfo.frequency.value=0.08;
+      const lfoG=c.createGain();lfoG.gain.value=0.04;
+      lfo.connect(lfoG);lfoG.connect(dg3.gain);
+      drone1.connect(dg1);drone2.connect(dg2);drone3.connect(dg3);
+      dg1.connect(this._musicGain);dg2.connect(this._musicGain);dg3.connect(this._musicGain);
+      drone1.start();drone2.start();drone3.start();lfo.start();
+      this._osc=[drone1,drone2,drone3,lfo];
+
+      // Sparse melodic notes — pentatonic minor pattern
+      const melody=[220,261,311,349,440,523];
+      let noteIdx=0;
+      const scheduleNote=()=>{
+        if(this._musicType!=='explore')return;
+        try{const nc=this.ctx();const no=nc.createOscillator();no.type='triangle';
+        no.frequency.value=melody[noteIdx%melody.length];noteIdx++;
+        const ng=nc.createGain();const t=nc.currentTime;
+        ng.gain.setValueAtTime(0,t);ng.gain.linearRampToValueAtTime(0.07,t+0.3);
+        ng.gain.linearRampToValueAtTime(0,t+1.8);
+        no.connect(ng);ng.connect(this._musicGain);no.start(t);no.stop(t+2);
+        const delay=rnd(3000,8000);this._melodyTimer=setTimeout(scheduleNote,delay);}catch(e){}
+      };
+      this._melodyTimer=setTimeout(scheduleNote,2000);
+
+    }else if(type==='combat'){
+      // Tense: faster pulse + dissonant tones
+      const pulse=c.createOscillator();pulse.type='square';pulse.frequency.value=55;
+      const pg=c.createGain();pg.gain.value=0.12;
+      const lfo2=c.createOscillator();lfo2.type='square';lfo2.frequency.value=4;
+      const lg2=c.createGain();lg2.gain.value=0.08;
+      lfo2.connect(lg2);lg2.connect(pg.gain);
+      const t2=c.createOscillator();t2.type='sawtooth';t2.frequency.value=73.4;
+      const tg2=c.createGain();tg2.gain.value=0.08;
+      pulse.connect(pg);t2.connect(tg2);pg.connect(this._musicGain);tg2.connect(this._musicGain);
+      pulse.start();t2.start();lfo2.start();
+      this._osc=[pulse,t2,lfo2];
+
+    }else if(type==='boss'){
+      // Dramatic: deep pulse + higher tension drones
+      const bp=c.createOscillator();bp.type='sawtooth';bp.frequency.value=41.2;
+      const bg=c.createGain();bg.gain.value=0.15;
+      const lfoB=c.createOscillator();lfoB.type='square';lfoB.frequency.value=2;
+      const lgB=c.createGain();lgB.gain.value=0.12;
+      lfoB.connect(lgB);lgB.connect(bg.gain);
+      const h=c.createOscillator();h.type='triangle';h.frequency.value=164.8;
+      const hg=c.createGain();hg.gain.value=0.09;
+      bp.connect(bg);h.connect(hg);bg.connect(this._musicGain);hg.connect(this._musicGain);
+      bp.start();h.start();lfoB.start();
+      this._osc=[bp,h,lfoB];
+
+    }else if(type==='merchant'){
+      // Lighter: higher drones, pleasant
+      const m1=c.createOscillator();m1.type='sine';m1.frequency.value=220;
+      const m2=c.createOscillator();m2.type='triangle';m2.frequency.value=330;
+      const mg1=c.createGain();mg1.gain.value=0.1;const mg2=c.createGain();mg2.gain.value=0.08;
+      m1.connect(mg1);m2.connect(mg2);mg1.connect(this._musicGain);mg2.connect(this._musicGain);
+      m1.start();m2.start();this._osc=[m1,m2];
+    }}catch(e){console.warn('Music error:',e);}
+  },
+
+  stopMusic(){
+    clearTimeout(this._melodyTimer);
+    this._osc.forEach(o=>{try{o.stop();}catch(e){}});
+    this._osc=[];this._musicType=null;
+  },
+
+  // ── NPC Voice (Web Speech API) ────────────────────────────────────────────
+  _voices:[],
+  loadVoices(){
+    this._voices=window.speechSynthesis?.getVoices()||[];
+    if(!this._voices.length)setTimeout(()=>this._voices=window.speechSynthesis?.getVoices()||[],500);
+  },
+  // Voice priority list — browser TTS quality varies wildly by platform
+  // We rank voices from best to worst available
+
+};
+
+
+// Audio settings (persist to localStorage)
+let _audSettings={music:true,sfx:true};
+try{const s=JSON.parse(localStorage.getItem('dd_audio')||'{}');Object.assign(_audSettings,s);}catch(e){}
+AUD.enabled=_audSettings.sfx||_audSettings.music;
+function saveAudSettings(){try{localStorage.setItem('dd_audio',JSON.stringify(_audSettings));}catch(e){}}
+
+
 const PANIM={lastMove:0,facing:1,lastAtk:0,lastHurt:0,stepPhase:0,stepDir:0};
 
 function drawLargeMap(ctx,dg,pos,floor){
@@ -864,9 +1600,47 @@ function drawLargeMap(ctx,dg,pos,floor){
   });
 }
 
-function render(){const root=document.getElementById('root');if(!root)return;root.innerHTML='';root.style.cssText='display:flex;flex-direction:column;height:100vh;width:100%;overflow:hidden;background:#07070f;';const st=GS;if(st.scr===S.TITLE)renderTitle(root);else if(st.scr===S.STORY)renderStory(root,st);else if(st.scr===S.GAME)renderGame(root,st);else if(st.scr===S.INV)renderInv(root,st);else if(st.scr===S.MERCHANT)renderMerchant(root,st);else if(st.scr===S.TALENT)renderTalent(root,st);else if(st.scr===S.DEATH)renderDeath(root,st);}
-function renderTitle(root){const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px 16px;gap:12px;overflow-y:auto;';let selCls='doom',pName='';div.innerHTML='<div style="text-align:center;"><div style="font-size:24px;font-weight:bold;color:#FFD700;letter-spacing:2px;">DUNGEON DESCENT</div><div style="font-size:9px;color:#444;letter-spacing:3px;margin-top:3px;">ENHANCED EDITION</div></div><div style="width:100%;max-width:320px;"><div style="font-size:11px;color:#666;margin-bottom:5px;">Your name:</div><input id="pname" type="text" maxlength="20" placeholder="Hero name..." style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:9px 11px;color:#fff;font-size:14px;font-family:monospace;"></div><div style="width:100%;max-width:320px;"><div style="font-size:11px;color:#666;margin-bottom:6px;">Choose class:</div><div id="cls-list"></div></div><button id="start-btn" style="padding:11px 36px;background:#FFD700;color:#000;border:none;border-radius:7px;font-size:14px;font-weight:bold;cursor:pointer;font-family:monospace;">BEGIN DESCENT</button><div style="font-size:9px;color:#333;text-align:center;line-height:1.7;">Move: Arrows/WASD | Skill: Q | Inventory: I | Wait: Space</div>';root.appendChild(div);const ni=div.querySelector('#pname');ni.addEventListener('input',e=>{pName=e.target.value;});const cl=div.querySelector('#cls-list');const cards={};Object.entries(CLS).forEach(([k,c])=>{const card=document.createElement('div');card.style.cssText=`border:2px solid ${k==='doom'?c.col:'#333'};border-radius:7px;padding:9px 12px;margin-bottom:7px;cursor:pointer;background:${k==='doom'?c.col+'22':'#111'};`;card.innerHTML=`<div style="font-size:13px;font-weight:bold;color:${c.col};">${c.n}</div><div style="font-size:10px;color:#777;margin-top:2px;">${c.desc}</div>`;card.addEventListener('click',()=>{selCls=k;Object.entries(cards).forEach(([ck,cv])=>{const cc=CLS[ck];cv.style.borderColor=ck===k?cc.col:'#333';cv.style.background=ck===k?cc.col+'22':'#111';});});cards[k]=card;cl.appendChild(card);});div.querySelector('#start-btn').addEventListener('click',()=>{if((pName||'').trim())dispatch({type:'START',name:pName.trim(),cls:selCls});});}
-function renderStory(root,st){const ev=st.sq[0];if(!ev)return;const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;padding:28px 20px;background:#050510;';div.innerHTML=`<div style="max-width:320px;text-align:center;"><div style="font-size:9px;color:#333;letter-spacing:4px;margin-bottom:12px;">CHAPTER</div><div style="font-size:18px;color:#FFD700;font-weight:bold;margin-bottom:16px;line-height:1.3;">${ev.t}</div><div style="font-size:12px;line-height:1.9;color:#AAA;margin-bottom:28px;">${ev.tx}</div><button id="cont" style="padding:10px 28px;background:#FFD700;color:#000;border:none;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;font-family:monospace;">CONTINUE</button></div>`;root.appendChild(div);div.querySelector('#cont').addEventListener('click',()=>dispatch({type:'DISMISS'}));}
+function render(){const root=document.getElementById('root');if(!root)return;root.innerHTML='';root.style.cssText='display:flex;flex-direction:column;height:100vh;width:100%;overflow:hidden;background:#07070f;';const st=GS;if(st.scr===S.TITLE)renderTitle(root);else if(st.scr===S.STORY)renderStory(root,st);else if(st.scr===S.GAME)renderGame(root,st);else if(st.scr===S.INV)renderInv(root,st);else if(st.scr===S.MERCHANT)renderMerchant(root,st);else if(st.scr===S.TALENT)renderTalent(root,st);else if(st.scr===S.DEATH)renderDeath(root,st);else if(st.scr===S.STAIRS)renderStairs(root,st);}
+function renderTitle(root){const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px 16px;gap:12px;overflow-y:auto;';let selCls='doom',pName='';div.innerHTML='<div style="text-align:center;"><div style="font-size:24px;font-weight:bold;color:#FFD700;letter-spacing:2px;">DUNGEON DESCENT</div><div style="font-size:9px;color:#444;letter-spacing:3px;margin-top:3px;">ENHANCED EDITION</div></div><div style="width:100%;max-width:320px;"><div style="font-size:11px;color:#666;margin-bottom:5px;">Your name:</div><input id="pname" type="text" maxlength="20" placeholder="Hero name..." style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:9px 11px;color:#fff;font-size:14px;font-family:monospace;"></div><div style="width:100%;max-width:320px;"><div style="font-size:11px;color:#666;margin-bottom:6px;">Choose class:</div><div id="cls-list"></div></div><button id="start-btn" style="padding:11px 36px;background:#FFD700;color:#000;border:none;border-radius:7px;font-size:14px;font-weight:bold;cursor:pointer;font-family:monospace;">BEGIN DESCENT</button><div style="font-size:9px;color:#333;text-align:center;line-height:1.7;">Move: Arrows/WASD | Skill: Q | Inventory: I | Wait: Space</div>';root.appendChild(div);const ni=div.querySelector('#pname');ni.addEventListener('input',e=>{pName=e.target.value;});const cl=div.querySelector('#cls-list');const cards={};Object.entries(CLS).forEach(([k,c])=>{const card=document.createElement('div');card.style.cssText=`border:2px solid ${k==='doom'?c.col:'#333'};border-radius:7px;padding:9px 12px;margin-bottom:7px;cursor:pointer;background:${k==='doom'?c.col+'22':'#111'};`;card.innerHTML=`<div style="font-size:13px;font-weight:bold;color:${c.col};">${c.n}</div><div style="font-size:10px;color:#777;margin-top:2px;">${c.desc}</div>`;card.addEventListener('click',()=>{selCls=k;Object.entries(cards).forEach(([ck,cv])=>{const cc=CLS[ck];cv.style.borderColor=ck===k?cc.col:'#333';cv.style.background=ck===k?cc.col+'22':'#111';});});cards[k]=card;cl.appendChild(card);});div.querySelector('#start-btn').addEventListener('click',()=>{if((pName||'').trim()){AUD.ctx();if(_audSettings.music)AUD.playMusic('explore');dispatch({type:'START',name:pName.trim(),cls:selCls});}});}
+function renderStory(root,st){const ev=st.sq[0];if(!ev)return;
+const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;padding:28px 20px;background:#050510;';div.innerHTML=`<div style="max-width:320px;text-align:center;"><div style="font-size:9px;color:${ev.isNpc?'#44AA44':'#333'};letter-spacing:4px;margin-bottom:12px;">${ev.isNpc?'DIALOGUE':'CHAPTER'}</div>${ev.npcIcon?`<div style='font-size:36px;margin-bottom:8px;'>${ev.npcIcon}</div>`:''}<div style="font-size:18px;color:#FFD700;font-weight:bold;margin-bottom:16px;line-height:1.3;">${ev.t}</div><div style="font-size:12px;line-height:1.9;color:#AAA;margin-bottom:28px;">${ev.tx}</div><button id="cont" style="padding:10px 28px;background:#FFD700;color:#000;border:none;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;font-family:monospace;">CONTINUE</button></div>`;root.appendChild(div);const ev2=GS.sq[0];
+  // Quest offer button
+  if(ev2&&ev2.questOffer&&!GS.activeQuest&&!GS.questDone){
+    const qo=ev2.questOffer;
+    const qPanel=document.createElement('div');
+    qPanel.style.cssText='margin-top:12px;padding:12px;background:rgba(255,220,0,0.08);border:1.5px solid #cc9900;border-radius:8px;max-width:300px;text-align:left;';
+    qPanel.innerHTML=`<div style="font-size:10px;color:#FFD700;letter-spacing:2px;font-weight:bold;margin-bottom:4px;">📋 QUEST OFFERED</div>
+      <div style="font-size:12px;color:#eee;font-weight:bold;margin-bottom:4px;">${qo.title}</div>
+      <div style="font-size:11px;color:#aaa;margin-bottom:8px;">${qo.desc}</div>
+      <div style="font-size:10px;color:#88dd88;">Reward: ${qo.reward.gold||0}g · ${qo.reward.xp||0}XP${qo.reward.item?' · Item':''}</div>`;
+    const acceptBtn=document.createElement('button');
+    acceptBtn.textContent='ACCEPT QUEST';
+    acceptBtn.style.cssText='margin-top:8px;padding:8px 18px;background:#1a3a0a;border:1.5px solid #44aa22;border-radius:7px;color:#88ff44;font-size:12px;font-weight:bold;cursor:pointer;font-family:monospace;';
+    acceptBtn.addEventListener('click',()=>{dispatch({type:'ACCEPT_QUEST',floor:GS.floor});dispatch({type:'DISMISS'});});
+    qPanel.appendChild(acceptBtn);
+    div.querySelector('div').appendChild(qPanel);
+  }
+  // Quest complete — show reward and collect button
+  if(ev2&&ev2.questComplete){
+    const qr=ev2.reward;
+    const rPanel=document.createElement('div');
+    rPanel.style.cssText='margin-top:12px;padding:12px;background:rgba(255,215,0,0.1);border:1.5px solid #FFD700;border-radius:8px;max-width:300px;text-align:center;';
+    rPanel.innerHTML=`<div style="font-size:13px;color:#FFD700;font-weight:bold;margin-bottom:6px;">🎉 REWARDS</div>
+      ${qr.gold?`<div style="font-size:12px;color:#eee;">💰 ${qr.gold} gold</div>`:''}
+      ${qr.xp?`<div style="font-size:12px;color:#eee;">⭐ ${qr.xp} XP</div>`:''}
+      ${qr.hp?`<div style="font-size:12px;color:#eee;">❤ +${qr.hp} HP</div>`:''}
+      ${qr.item?`<div style="font-size:12px;color:#eee;">🎁 Item added to bag</div>`:''}`;
+    div.querySelector('div').appendChild(rPanel);
+  }
+  if(ev2&&ev2.isEnding){
+    const cont=div.querySelector('#cont');cont.textContent='CONTINUE ENDLESSLY ▶';
+    const stop=document.createElement('button');
+    stop.textContent='THE END — RETIRE';
+    stop.style.cssText='margin-top:12px;padding:10px 28px;background:none;border:1.5px solid #444;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;font-family:monospace;color:#888;';
+    stop.addEventListener('click',()=>{AUD.stopMusic();dispatch({type:'RESTART'});});
+    div.querySelector('div').appendChild(stop);
+  }
+  div.querySelector('#cont').addEventListener('click',()=>{dispatch({type:'DISMISS'});});}
 function renderGame(root,st){const{p,floor,dg,log,pos}=st,stats=calcStats(p);const hpPct=clamp(p.hp/stats.mhp,0,1),xpPct=clamp(p.xp/xpN(p.lv+1),0,1);const ps=p.status||{};const topBar=document.createElement('div');topBar.style.cssText='height:36px;display:flex;align-items:center;padding:0 10px;background:#0a0a1a;border-bottom:1px solid #1a1a30;flex-shrink:0;';const statusIcons=[ps.poison>0?'<span style="color:#AA44AA;font-size:9px;">PSN</span>':'',ps.burn>0?'<span style="color:#FF6600;font-size:9px;">BRN</span>':'',ps.frozen>0?'<span style="color:#44AAFF;font-size:9px;">FRZ</span>':''].filter(Boolean).join(' ');topBar.innerHTML=`<span style="color:${CLS[p.cls].col};font-size:11px;font-weight:bold;flex:1;">${p.name} ${statusIcons}</span><span style="color:#666;font-size:9px;margin-right:10px;">Lv.${p.lv}</span><span style="color:#555;font-size:9px;margin-right:10px;">Fl.${floor}${dg.isBossFloor?'<span style=\"color:#FF4444;\"> ★</span>':''}${dg.isMerchantFloor?'<span style=\"color:#FFD700;\"> $</span>':''}</span><span style="color:#FFD700;font-size:10px;font-weight:bold;">💰${p.gold}g</span>`;root.appendChild(topBar);const cvWrap=document.createElement('div');cvWrap.style.cssText='flex:1;overflow:hidden;min-height:0;background:#07070f;';canvas.style.width='100%';canvas.style.height='100%';cvWrap.appendChild(canvas);root.appendChild(cvWrap);
 const hud=document.createElement('div');
 hud.style.cssText='position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:290px;padding:10px 16px 12px;background:rgba(5,5,18,0.88);border:1px solid #2a2a50;border-bottom:none;border-radius:12px 12px 0 0;pointer-events:none;z-index:10;';
@@ -902,8 +1676,18 @@ const skLabel={doom:'Pizza',camp:'Viral',tact:'Drone',anime:'Senpai'}[p.cls];
 const firstPotion=p.inv.findIndex(it=>it.hp>0);
 const hasPot=firstPotion!==-1;
 
+const adjNpc2=GS.dg&&GS.dg.npcs&&GS.dg.npcs.find(n=>Math.abs(n.x-GS.pos.x)<=1&&Math.abs(n.y-GS.pos.y)<=1);
+const canCompleteQuest=adjNpc2&&GS.activeQuest&&GS.questProg>=(GS.activeQuest.count||1)&&GS.activeQuest.floor===GS.floor&&!GS.questDone;
 const actionDefs=[
-  {label:skIcon,sub:skReady2?'READY':`CD:${p.scd}`,
+  ...(canCompleteQuest?[{label:'✓',sub:'COMPLETE',
+   bg:'rgba(20,60,5,0.95)',border:'#FFD700',col:'#FFD700',
+   action:()=>dispatch({type:'COMPLETE_QUEST'}),
+   badge:'Quest!'}]:[]),
+  ...(adjNpc2&&!canCompleteQuest?[{label:adjNpc2.icon,sub:'TALK',
+   bg:'rgba(10,40,10,0.92)',border:'#44BB44',col:'#88FF88',
+   action:()=>dispatch({type:'TALK',id:adjNpc2.id}),
+   badge:adjNpc2.name}]:[]),
+  {label:skIcon,sub:skReady2?'⚡ READY':'⏳ recharging',
    bg:skReady2?'rgba(44,18,80,0.92)':'rgba(8,8,20,0.85)',
    border:skReady2?'#7a20cc':'#2a2a44',
    col:skReady2?'#CC88FF':'#444',
@@ -915,10 +1699,6 @@ const actionDefs=[
    col:hasPot?'#FF8888':'#444',
    action:()=>{if(hasPot)dispatch({type:'USE',i:firstPotion});},
    badge:'Potion'},
-  {label:'⏸',sub:'wait',
-   bg:'rgba(8,8,20,0.85)',border:'#1e1e3a',col:'#666',
-   action:()=>dispatch({type:'MOVE',dx:0,dy:0}),
-   badge:'Wait'},
   {label:'🗺',sub:'map',
    bg:'rgba(8,18,30,0.88)',border:'#1a3a5a',col:'#4a9aCC',
    action:()=>{showMap=!showMap;},
@@ -944,12 +1724,71 @@ actionDefs.forEach(def=>{
   actionBar.appendChild(btn);
 });
 cvWrap.appendChild(actionBar);
-cvWrap.appendChild(hud);if(pendingDraw)cancelAnimationFrame(pendingDraw);pendingDraw=requestAnimationFrame(()=>{pendingDraw=null;const w=cvWrap.offsetWidth,h=cvWrap.offsetHeight;if(w>0&&h>0){if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;canvasW=w;canvasH=h;}}if(canvasW>0&&canvasH>0){const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;if(GS.scr===S.GAME)drawGame(ctx,GS);}});const logDiv=document.createElement('div');logDiv.style.cssText='height:68px;background:#0a0a18;border-top:1px solid #1a1a30;padding:5px 14px;flex-shrink:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;';logDiv.innerHTML=log.slice(0,3).map((m,i)=>`<div style="font-size:${i===0?'12px':'10px'};color:${i===0?'#E8E8E8':i===1?'#888':'#4a4a4a'};line-height:1.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;font-weight:${i===0?'500':'400'};">${m}</div>`).join('');root.appendChild(logDiv);const ctrl=document.createElement('div');ctrl.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:5px 10px;background:#0a0a18;border-top:1px solid #1a1a30;flex-shrink:0;gap:6px;';const dpad=document.createElement('div');dpad.style.cssText='display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:2px;';[[null,{dx:0,dy:-1,l:'▲'},null],[{dx:-1,dy:0,l:'◀'},null,{dx:1,dy:0,l:'▶'}],[null,{dx:0,dy:1,l:'▼'},null]].flat().forEach(d=>{if(d){const btn=document.createElement('button');btn.className='dpad-btn';btn.textContent=d.l;btn.addEventListener('pointerdown',e=>{e.preventDefault();dispatch({type:'MOVE',dx:d.dx,dy:d.dy});});dpad.appendChild(btn);}else{const sp=document.createElement('div');sp.style.cssText='width:46px;height:46px;';dpad.appendChild(sp);}});ctrl.appendChild(dpad);const acts=document.createElement('div');acts.style.cssText='display:flex;flex-direction:column;gap:6px;';
+cvWrap.appendChild(hud);if(pendingDraw)cancelAnimationFrame(pendingDraw);pendingDraw=requestAnimationFrame(()=>{pendingDraw=null;const w=cvWrap.offsetWidth,h=cvWrap.offsetHeight;if(w>0&&h>0){if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;canvasW=w;canvasH=h;}}if(canvasW>0&&canvasH>0){const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;if(GS.scr===S.GAME)drawGame(ctx,GS);}});// ── Floor objective tracker ──────────────────────────────────────────────
+const objBar=document.createElement('div');
+objBar.style.cssText='display:flex;flex-direction:column;gap:2px;padding:4px 10px;background:#06060f;border-top:1px solid #1a1a2a;flex-shrink:0;';
+if(GS.floorObj){
+  const fo=GS.floorObj;
+  const prog=Math.min(fo.count||1,GS.floorObjProg||0);
+  const total=fo.count||1;
+  const done=GS.floorObjDone;
+  const pct=Math.round(prog/total*100);
+  const barW=Math.round(pct/100*120);
+  objBar.innerHTML=`
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div style="font-size:9px;color:${done?'#44FF88':'#FFD700'};font-weight:bold;letter-spacing:1px;flex-shrink:0;">${done?'✓ DONE':'OBJECTIVE'}</div>
+      <div style="font-size:9px;color:${done?'#44FF88':'#ccc'};flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fo.label}</div>
+      ${fo.type===QT.KILL?`<div style="font-size:9px;color:#aaa;">${prog}/${total}</div>`:fo.type===QT.EXPLORE?`<div style="font-size:9px;color:#aaa;">${GS.floorObjProg||0}%</div>`:''}
+    </div>
+    ${(fo.type===QT.KILL||fo.type===QT.EXPLORE)&&!done?`<div style="height:3px;background:#1a1a2a;border-radius:2px;width:100%;"><div style="height:3px;background:#FFD700;border-radius:2px;width:${fo.type===QT.EXPLORE?Math.min(100,GS.floorObjProg||0):pct}%;"></div></div>`:''}
+    ${GS.activeQuest&&!GS.questDone?`<div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+      <div style="font-size:9px;color:#CC88FF;font-weight:bold;flex-shrink:0;">QUEST</div>
+      <div style="font-size:9px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${GS.activeQuest.title}</div>
+      ${GS.activeQuest.count?`<div style="font-size:9px;color:#aaa;">${Math.min(GS.activeQuest.count,GS.questProg||0)}/${GS.activeQuest.count}</div>`:''}
+    </div>`:''}`;
+}
+root.appendChild(objBar);
+
+const logDiv=document.createElement('div');logDiv.style.cssText='height:68px;background:#0a0a18;border-top:1px solid #1a1a30;padding:5px 14px;flex-shrink:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;';logDiv.innerHTML=log.slice(0,3).map((m,i)=>`<div style="font-size:${i===0?'12px':'10px'};color:${i===0?'#E8E8E8':i===1?'#888':'#4a4a4a'};line-height:1.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;font-weight:${i===0?'500':'400'};">${m}</div>`).join('');root.appendChild(logDiv);// ── SLIM BOTTOM BAR: just BAG button, no D-pad (D-pad moves to canvas overlay) ──
+const ctrl=document.createElement('div');
+ctrl.style.cssText='display:flex;align-items:center;justify-content:flex-end;padding:4px 12px;background:#0a0a18;border-top:1px solid #1a1a30;flex-shrink:0;height:44px;';
 const invBtn=document.createElement('button');
-invBtn.style.cssText='padding:9px 10px;border-radius:8px;font-size:10px;text-align:center;cursor:pointer;min-width:72px;background:#1a2a1a;border:1.5px solid #2a4a2a;color:#8BC34A;font-family:monospace;font-weight:bold;';
-invBtn.innerHTML=`BAG<br><span style="color:#5D8A4E;font-weight:normal;">${p.inv.length}/${p.invCap}</span>`;
+invBtn.style.cssText='padding:7px 16px;border-radius:8px;font-size:11px;text-align:center;cursor:pointer;background:#1a2a1a;border:1.5px solid #2a4a2a;color:#8BC34A;font-family:monospace;font-weight:bold;';
+invBtn.innerHTML=`🎒 BAG <span style="color:#5D8A4E;font-weight:normal;">${p.inv.length}/${p.invCap}</span>`;
 invBtn.addEventListener('pointerdown',e=>{e.preventDefault();selInv=-1;dispatch({type:'TOGGLE_INV'});});
-acts.appendChild(invBtn);ctrl.appendChild(acts);root.appendChild(ctrl);}
+ctrl.appendChild(invBtn);
+
+// Audio toggle buttons
+const audBtns=document.createElement('div');
+audBtns.style.cssText='display:flex;gap:4px;align-items:center;';
+[['🎵',()=>_audSettings.music,()=>{_audSettings.music=!_audSettings.music;if(!_audSettings.music)AUD.stopMusic();else AUD.playMusic('explore');saveAudSettings();},'Music'],
+ ['🔊',()=>_audSettings.sfx,()=>{_audSettings.sfx=!_audSettings.sfx;saveAudSettings();},'SFX'],
+].forEach(([icon,isOn,toggle,label])=>{
+  const b=document.createElement('button');
+  b.style.cssText=`width:30px;height:30px;font-size:13px;border-radius:6px;border:1px solid #2a2a44;background:${isOn()?'#1a1a30':'#0a0a12'};opacity:${isOn()?'1':'0.4'};cursor:pointer;`;
+  b.title=label;b.textContent=icon;
+  b.addEventListener('click',()=>{toggle();render();});
+  audBtns.appendChild(b);
+});
+ctrl.insertBefore(audBtns,invBtn);
+root.appendChild(ctrl);
+
+// ── CANVAS OVERLAY D-PAD: floats over lower-left of game canvas ──────────────
+const dpadOverlay=document.createElement('div');
+dpadOverlay.style.cssText='position:absolute;bottom:12px;left:10px;display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:4px;z-index:15;pointer-events:auto;';
+[[null,{dx:0,dy:-1,l:'▲'},null],[{dx:-1,dy:0,l:'◀'},null,{dx:1,dy:0,l:'▶'}],[null,{dx:0,dy:1,l:'▼'},null]].flat().forEach(d=>{
+  if(d){
+    const btn=document.createElement('button');
+    btn.style.cssText='width:52px;height:52px;background:rgba(14,14,42,0.82);border:1.5px solid rgba(80,80,160,0.6);border-radius:10px;color:rgba(180,180,220,0.95);font-size:22px;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none;cursor:pointer;-webkit-tap-highlight-color:transparent;backdrop-filter:blur(2px);';
+    btn.textContent=d.l;
+    btn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();dispatch({type:'MOVE',dx:d.dx,dy:d.dy});});
+    btn.addEventListener('touchstart',e=>{e.preventDefault();dispatch({type:'MOVE',dx:d.dx,dy:d.dy});},{passive:false});
+    dpadOverlay.appendChild(btn);
+  }else{
+    const sp=document.createElement('div');sp.style.cssText='width:52px;height:52px;';dpadOverlay.appendChild(sp);
+  }
+});
+cvWrap.appendChild(dpadOverlay);}
 function getItemIcon(it){
   const icons={weapon:'⚔',armor:'🛡',helmet:'⛑',boots:'👟',gloves:'🥊',ring:'💍',amulet:'📿',consumable:'🧪'};
   return icons[it.type]||'?';
@@ -1301,10 +2140,30 @@ function renderInv(root,st){
 
 function renderMerchant(root,st){const{p,dg}=st;const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;height:100%;background:#07030a;';const hdr=document.createElement('div');hdr.style.cssText='padding:10px 14px;background:#0a0512;border-bottom:1px solid #2a1a2a;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;';hdr.innerHTML=`<div><div style="color:#FFD700;font-weight:bold;font-size:15px;">THE WANDERING MERCHANT</div><div style="color:#664444;font-size:9px;margin-top:2px;">"Finest wares in the dungeon."</div></div><div style="text-align:right;"><div style="color:#FFD700;font-size:14px;font-weight:bold;">${p.gold}g</div></div>`;const closeBtn=document.createElement('button');closeBtn.textContent='LEAVE';closeBtn.style.cssText='display:block;margin-top:4px;background:none;border:1px solid #444;border-radius:5px;color:#888;padding:3px 8px;cursor:pointer;font-family:monospace;font-size:10px;';closeBtn.addEventListener('click',()=>dispatch({type:'CLOSE_MERCHANT'}));hdr.querySelector('div:last-child').appendChild(closeBtn);div.appendChild(hdr);const body=document.createElement('div');body.style.cssText='flex:1;overflow-y:auto;padding:10px;';body.innerHTML+='<div style="font-size:10px;color:#664444;margin-bottom:8px;letter-spacing:1px;">FOR SALE</div>';if(!dg.merchantInv?.length){body.innerHTML+='<div style="color:#333;font-size:11px;">Sold out!</div>';}(dg.merchantInv||[]).forEach((it,i)=>{const cost=Math.round((it.val||20)*2);const canAfford=p.gold>=cost;const card=document.createElement('div');card.style.cssText=`padding:8px 10px;margin-bottom:7px;border-radius:6px;background:#110a0a;border:1px solid ${it.rc}44;display:flex;justify-content:space-between;align-items:center;`;const sl=[it.atk?`ATK+${it.atk}`:null,it.def?`DEF+${it.def}`:null,it.mgk?`MGK+${it.mgk}`:null,it.mhp?`MaxHP+${it.mhp}`:null,it.hp?`Heals ${it.hp}`:null].filter(Boolean).join(' ');card.innerHTML=`<div style="flex:1;min-width:0;"><div style="font-size:11px;color:${it.rc};font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${it.dn}</div><div style="font-size:10px;color:#111;margin-top:2px;font-weight:600;">${it.rn} ${it.type}${sl?' - '+sl:''}</div></div><button style="padding:5px 8px;border:none;border-radius:5px;background:${canAfford?'#4A3010':'#1a1a1a'};color:${canAfford?'#FFD700':'#444'};font-size:10px;cursor:${canAfford?'pointer':'default'};font-family:monospace;margin-left:8px;white-space:nowrap;">${cost}g</button>`;card.querySelector('button').addEventListener('click',()=>{if(canAfford)dispatch({type:'BUY',i});});body.appendChild(card);});body.innerHTML+='<div style="font-size:10px;color:#664444;margin:12px 0 8px;letter-spacing:1px;border-top:1px solid #1a1a30;padding-top:10px;">SELL ITEMS</div>';if(!p.inv.length)body.innerHTML+='<div style="color:#333;font-size:11px;">Nothing to sell</div>';p.inv.forEach((it,i)=>{const val=Math.max(1,Math.round((it.val||10)/2));const card=document.createElement('div');card.style.cssText='padding:7px 10px;margin-bottom:5px;border-radius:6px;background:#0a0a0a;border:1px solid #1a1a1a;display:flex;justify-content:space-between;align-items:center;';card.innerHTML=`<div style="flex:1;min-width:0;font-size:10px;color:${it.rc||'#AAA'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${it.dn}</div><button style="padding:4px 7px;border:none;border-radius:4px;background:#1E3A1E;color:#6aaa6a;font-size:10px;cursor:pointer;font-family:monospace;margin-left:8px;white-space:nowrap;">+${val}g</button>`;card.querySelector('button').addEventListener('click',()=>dispatch({type:'SELL',i}));body.appendChild(card);});div.appendChild(body);root.appendChild(div);}
 function renderTalent(root,st){const talents=st.pendingTalents||pickTalents();const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px;background:#030312;';div.innerHTML=`<div style="font-size:10px;color:#444;letter-spacing:3px;margin-bottom:10px;">LEVEL UP</div><div style="font-size:22px;color:#FFD700;font-weight:bold;margin-bottom:6px;">Level ${st.p.lv}!</div><div style="font-size:12px;color:#888;margin-bottom:22px;">Choose a talent:</div>`;talents.forEach(t=>{const btn=document.createElement('div');btn.style.cssText='width:100%;max-width:300px;padding:14px 16px;margin-bottom:10px;border-radius:8px;background:#0e0e24;border:1px solid #2a2a55;cursor:pointer;';btn.innerHTML=`<div style="font-size:14px;color:#DDAAFF;font-weight:bold;margin-bottom:4px;">${t.n}</div><div style="font-size:11px;color:#778;line-height:1.5;">${t.d}</div>`;btn.addEventListener('click',()=>dispatch({type:'PICK_TALENT',talent:t}));btn.addEventListener('mouseenter',()=>{btn.style.background='#161640';btn.style.borderColor='#5555AA';});btn.addEventListener('mouseleave',()=>{btn.style.background='#0e0e24';btn.style.borderColor='#2a2a55';});div.appendChild(btn);});root.appendChild(div);}
+function renderStairs(root,st){
+  const div=document.createElement('div');
+  div.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:rgba(4,4,16,0.96);color:#ddd;padding:28px;';
+  div.innerHTML=`
+    <div style="font-size:44px;margin-bottom:14px;">🌀</div>
+    <div style="font-size:20px;color:#00CFFF;font-weight:bold;margin-bottom:8px;">DESCEND?</div>
+    <div style="font-size:13px;color:#778;text-align:center;margin-bottom:6px;">Floor ${st.floor} → Floor ${st.floor+1}</div>
+    <div style="font-size:11px;color:#556;text-align:center;margin-bottom:28px;">
+      ${st.dg.isBossFloor?'<span style="color:#FF4444;">⚠ A powerful boss awaits below!</span>':'The dungeon grows deeper and more dangerous.'}
+    </div>
+    <div style="display:flex;gap:14px;">
+      <button id="btn-ascend" style="padding:13px 32px;background:#003a6a;border:2px solid #00CFFF;border-radius:10px;color:#00CFFF;font-size:15px;font-weight:bold;cursor:pointer;font-family:monospace;">DESCEND ▼</button>
+      <button id="btn-stay"   style="padding:13px 32px;background:#1a1a0a;border:2px solid #888;border-radius:10px;color:#aaa;font-size:15px;font-weight:bold;cursor:pointer;font-family:monospace;">STAY ✕</button>
+    </div>
+    <div style="font-size:10px;color:#333;margin-top:18px;">HP: ${st.p.hp}/${(()=>{const s=calcStats(st.p);return s.mhp;})()} · Floor ${st.floor} · Lv.${st.p.lv}</div>`;
+  root.appendChild(div);
+  div.querySelector('#btn-ascend').addEventListener('click',()=>dispatch({type:'ASCEND'}));
+  div.querySelector('#btn-stay').addEventListener('click',()=>{GS={...GS,scr:S.GAME};render();});
+}
+
 function renderDeath(root,st){const{p,floor,log}=st;const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:#0a0005;padding:24px;';div.innerHTML=`<div style="font-size:50px;margin-bottom:10px;opacity:.8;">X</div><div style="font-size:24px;color:#CC0000;font-weight:bold;margin-bottom:7px;letter-spacing:2px;">YOU DIED</div><div style="font-size:12px;color:#666;margin-bottom:6px;">${p.name} the ${CLS[p.cls].n} fell on floor ${floor}</div><div style="font-size:11px;color:#444;margin-bottom:18px;">Level ${p.lv} | ${p.xp} XP | ${p.gold} gold</div><div style="max-width:280px;font-size:9px;color:#333;text-align:center;line-height:1.8;margin-bottom:24px;border:1px solid #1a0010;border-radius:7px;padding:10px;">${log.slice(0,5).join('<br>')}</div><button id="retry" style="padding:11px 32px;background:#CC0000;border:none;border-radius:7px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;font-family:monospace;">TRY AGAIN</button>`;root.appendChild(div);div.querySelector('#retry').addEventListener('click',()=>dispatch({type:'RESTART'}));}
-document.addEventListener('keydown',e=>{if(document.activeElement&&document.activeElement.tagName==='INPUT')return;const km={ArrowUp:{type:'MOVE',dx:0,dy:-1},ArrowDown:{type:'MOVE',dx:0,dy:1},ArrowLeft:{type:'MOVE',dx:-1,dy:0},ArrowRight:{type:'MOVE',dx:1,dy:0},w:{type:'MOVE',dx:0,dy:-1},s:{type:'MOVE',dx:0,dy:1},a:{type:'MOVE',dx:-1,dy:0},d:{type:'MOVE',dx:1,dy:0},q:{type:'SKILL'},i:{type:'TOGGLE_INV'},' ':{type:'MOVE',dx:0,dy:0},z:{type:'MOVE',dx:0,dy:0},Enter:{type:'DISMISS'}};const act=km[e.key];if(act){e.preventDefault();dispatch(act);}if(e.key==='m'||e.key==='M'){e.preventDefault();showMap=!showMap;}});
+document.addEventListener('keydown',e=>{if(document.activeElement&&document.activeElement.tagName==='INPUT')return;const km={ArrowUp:{type:'MOVE',dx:0,dy:-1},ArrowDown:{type:'MOVE',dx:0,dy:1},ArrowLeft:{type:'MOVE',dx:-1,dy:0},ArrowRight:{type:'MOVE',dx:1,dy:0},w:{type:'MOVE',dx:0,dy:-1},s:{type:'MOVE',dx:0,dy:1},a:{type:'MOVE',dx:-1,dy:0},d:{type:'MOVE',dx:1,dy:0},q:{type:'SKILL'},i:{type:'TOGGLE_INV'},e:{type:'TALK_ADJ'},' ':{type:'MOVE',dx:0,dy:0},z:{type:'MOVE',dx:0,dy:0},Enter:{type:'DISMISS'}};const act=km[e.key];if(act){e.preventDefault();dispatch(act);}if(e.key==='m'||e.key==='M'){e.preventDefault();showMap=!showMap;}});
 document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
-setInterval(()=>{if(GS.scr===S.GAME)dispatch({type:'ENEMY_TICK'});},600);
+setInterval(()=>{if(GS.scr===S.GAME)dispatch({type:'ENEMY_TICK'});},400);
 (function flickerLoop(){
   if(GS.scr===S.GAME&&canvasW>0&&canvas.parentNode){
     const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
