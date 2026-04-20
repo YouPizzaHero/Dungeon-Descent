@@ -482,22 +482,35 @@ function initJoystick(){
   // Create persistent zone div sitting over the canvas wrapper
   const zone=document.createElement('div');
   zone.id='joy-zone';
-  zone.style.cssText='position:fixed;right:0;top:0;width:160px;height:100%;z-index:100;pointer-events:auto;';
+  zone.style.cssText='position:fixed;z-index:1000;pointer-events:auto;touch-action:none;';
   document.body.appendChild(zone);
+
+  // Size the zone to match the game canvas area only (excludes top bar + bottom bars)
+  function sizeJoyZone(){
+    const cv=document.querySelector('canvas');
+    if(!cv){setTimeout(sizeJoyZone,100);return;}
+    const r=cv.getBoundingClientRect();
+    zone.style.left=r.left+'px';
+    zone.style.top=r.top+'px';
+    zone.style.width=r.width+'px';
+    zone.style.height=r.height+'px';
+  }
+  setTimeout(sizeJoyZone,200);
+  window.addEventListener('resize',sizeJoyZone);
 
   _nippleManager=nipplejs.create({
     zone,
     mode:'static',
-    position:{right:'70px',top:'50%'},
+    position:{left:'50%',top:'50%'},   // Center of canvas = center on player
     color:{
-      front:'rgba(100,120,255,0.88)',
-      back:'rgba(10,10,40,0.65)'
+      front:'rgba(160,180,255,1)',
+      back:'rgba(30,40,120,0.85)'
     },
-    size:120,
+    size:90,
     threshold:0.1,
     restJoystick:true,
-    restOpacity:0.6,
-    fadeTime:100,
+    restOpacity:1,
+    fadeTime:50,
   });
 
   let nippleDx=0,nippleDy=0;
@@ -1714,7 +1727,7 @@ const div=document.createElement('div');div.style.cssText='display:flex;flex-dir
     div.querySelector('div').appendChild(stop);
   }
   div.querySelector('#cont').addEventListener('click',()=>{dispatch({type:'DISMISS'});});}
-function renderGame(root,st){const{p,floor,dg,log,pos}=st,stats=calcStats(p);const hpPct=clamp(p.hp/stats.mhp,0,1),xpPct=clamp(p.xp/xpN(p.lv+1),0,1);const ps=p.status||{};const topBar=document.createElement('div');topBar.style.cssText='height:36px;display:flex;align-items:center;padding:0 10px;background:#0a0a1a;border-bottom:1px solid #1a1a30;flex-shrink:0;';const statusIcons=[ps.poison>0?'<span style="color:#AA44AA;font-size:9px;">PSN</span>':'',ps.burn>0?'<span style="color:#FF6600;font-size:9px;">BRN</span>':'',ps.frozen>0?'<span style="color:#44AAFF;font-size:9px;">FRZ</span>':''].filter(Boolean).join(' ');topBar.innerHTML=`<span style="color:${CLS[p.cls].col};font-size:11px;font-weight:bold;flex:1;">${p.name} ${statusIcons}</span><span style="color:#666;font-size:9px;margin-right:10px;">Lv.${p.lv}</span><span style="color:#555;font-size:9px;margin-right:10px;">Fl.${floor}${dg.isBossFloor?'<span style=\"color:#FF4444;\"> ★</span>':''}${dg.isMerchantFloor?'<span style=\"color:#FFD700;\"> $</span>':''}</span><span style="color:#FFD700;font-size:10px;font-weight:bold;">💰${p.gold}g</span>`;root.appendChild(topBar);const cvWrap=document.createElement('div');cvWrap.style.cssText='flex:1;overflow:hidden;min-height:0;background:#07070f;';canvas.style.width='100%';canvas.style.height='100%';cvWrap.appendChild(canvas);root.appendChild(cvWrap);
+function renderGame(root,st){const{p,floor,dg,log,pos}=st,stats=calcStats(p);const hpPct=clamp(p.hp/stats.mhp,0,1),xpPct=clamp(p.xp/xpN(p.lv+1),0,1);const ps=p.status||{};const topBar=document.createElement('div');topBar.style.cssText='height:36px;display:flex;align-items:center;padding:0 10px;background:#0a0a1a;border-bottom:1px solid #1a1a30;flex-shrink:0;';const statusIcons=[ps.poison>0?'<span style="color:#AA44AA;font-size:9px;">PSN</span>':'',ps.burn>0?'<span style="color:#FF6600;font-size:9px;">BRN</span>':'',ps.frozen>0?'<span style="color:#44AAFF;font-size:9px;">FRZ</span>':''].filter(Boolean).join(' ');topBar.innerHTML=`<span style="color:${CLS[p.cls].col};font-size:11px;font-weight:bold;flex:1;">${p.name} ${statusIcons}</span><span style="color:#666;font-size:9px;margin-right:10px;">Lv.${p.lv}</span><span style="color:#555;font-size:9px;margin-right:10px;">Fl.${floor}${dg.isBossFloor?'<span style=\"color:#FF4444;\"> ★</span>':''}${dg.isMerchantFloor?'<span style=\"color:#FFD700;\"> $</span>':''}</span><span style="color:#FFD700;font-size:10px;font-weight:bold;">💰${p.gold}g</span>`;root.appendChild(topBar);const cvWrap=document.createElement('div');cvWrap.style.cssText='flex:1;overflow:hidden;min-height:0;background:#07070f;position:relative;';canvas.style.width='100%';canvas.style.height='100%';cvWrap.appendChild(canvas);root.appendChild(cvWrap);
 const hud=document.createElement('div');
 hud.style.cssText='position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:290px;padding:10px 16px 12px;background:rgba(5,5,18,0.88);border:1px solid #2a2a50;border-bottom:none;border-radius:12px 12px 0 0;pointer-events:none;z-index:10;';
 const SEGS=16;
@@ -1741,7 +1754,7 @@ cvWrap.style.position='relative';
 
 // === ACTION BAR (above HUD) ===
 const actionBar=document.createElement('div');
-actionBar.style.cssText='position:absolute;bottom:72px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:12;pointer-events:auto;';
+actionBar.style.cssText='display:flex;flex-direction:column;gap:5px;justify-content:center;flex-shrink:0;padding:4px 6px;';
 
 const skReady2=p.scd===0;
 const skIcon={doom:'🍕',camp:'📹',tact:'🚁',anime:'🐱'}[p.cls]||'★';
@@ -1780,7 +1793,7 @@ const actionDefs=[
 
 actionDefs.forEach(def=>{
   const btn=document.createElement('div');
-  btn.style.cssText=`display:flex;flex-direction:column;align-items:center;justify-content:center;width:62px;height:62px;border-radius:12px;background:${def.bg};border:1.5px solid ${def.border};cursor:pointer;touch-action:none;user-select:none;gap:1px;`;
+  btn.style.cssText=`display:flex;flex-direction:column;align-items:center;justify-content:center;width:56px;height:62px;border-radius:10px;background:${def.bg};border:1.5px solid ${def.border};cursor:pointer;touch-action:none;user-select:none;gap:1px;`;
   const iconEl=document.createElement('div');
   iconEl.style.cssText=`font-size:22px;line-height:1;`;
   iconEl.textContent=def.label;
@@ -1796,7 +1809,7 @@ actionDefs.forEach(def=>{
   btn.addEventListener('pointerleave',()=>{btn.style.filter='none';});
   actionBar.appendChild(btn);
 });
-cvWrap.appendChild(actionBar);
+// actionBar moved to log row
 cvWrap.appendChild(hud);if(pendingDraw)cancelAnimationFrame(pendingDraw);pendingDraw=requestAnimationFrame(()=>{pendingDraw=null;const w=cvWrap.offsetWidth,h=cvWrap.offsetHeight;if(w>0&&h>0){if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;canvasW=w;canvasH=h;}}if(canvasW>0&&canvasH>0){const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;if(GS.scr===S.GAME)drawGame(ctx,GS);}});// ── Floor objective tracker ──────────────────────────────────────────────
 const objBar=document.createElement('div');
 objBar.style.cssText='display:flex;flex-direction:column;gap:2px;padding:4px 10px;background:#06060f;border-top:1px solid #1a1a2a;flex-shrink:0;';
@@ -1822,7 +1835,25 @@ if(GS.floorObj){
 }
 root.appendChild(objBar);
 
-const logDiv=document.createElement('div');logDiv.style.cssText='height:68px;background:#0a0a18;border-top:1px solid #1a1a30;padding:5px 14px;flex-shrink:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;';logDiv.innerHTML=log.slice(0,3).map((m,i)=>`<div style="font-size:${i===0?'12px':'10px'};color:${i===0?'#E8E8E8':i===1?'#888':'#4a4a4a'};line-height:1.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;font-weight:${i===0?'500':'400'};">${m}</div>`).join('');root.appendChild(logDiv);// ── SLIM BOTTOM BAR: just BAG button, no D-pad (D-pad moves to canvas overlay) ──
+// ── Combined log + action bar row ─────────────────────────────────────────
+const logRow=document.createElement('div');
+logRow.style.cssText='display:flex;align-items:stretch;background:#0a0a18;border-top:1px solid #1a1a30;flex-shrink:0;height:72px;';
+
+// Log: left side
+const logDiv=document.createElement('div');
+logDiv.style.cssText='flex:1;min-width:0;padding:5px 10px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;';
+logDiv.innerHTML=log.slice(0,3).map((m,i)=>`<div style="font-size:${i===0?'11px':'9px'};color:${i===0?'#E8E8E8':i===1?'#888':'#4a4a4a'};line-height:1.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${i===0?'500':'400'};">${m}</div>`).join('');
+logRow.appendChild(logDiv);
+
+// Divider
+const divider=document.createElement('div');
+divider.style.cssText='width:1px;background:#1a1a30;flex-shrink:0;margin:8px 0;';
+logRow.appendChild(divider);
+
+// Action buttons: right side — horizontal row
+actionBar.style.cssText='display:flex;flex-direction:row;gap:5px;align-items:center;padding:4px 8px;flex-shrink:0;';
+logRow.appendChild(actionBar);
+root.appendChild(logRow);// ── SLIM BOTTOM BAR: just BAG button, no D-pad (D-pad moves to canvas overlay) ──
 const ctrl=document.createElement('div');
 ctrl.style.cssText='display:flex;align-items:center;justify-content:flex-end;padding:4px 12px;background:#0a0a18;border-top:1px solid #1a1a30;flex-shrink:0;height:44px;';
 const invBtn=document.createElement('button');
