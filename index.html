@@ -476,80 +476,72 @@ function initGame(name,cls){const cd=CLS[cls],dg=mkDungeon(1),st=mkStory();const
 function updateVis(dg,pos,vr){const vis=dg.vis.map(r=>[...r]);for(let y=0;y<DH;y++)for(let x=0;x<DW;x++)if(vis[y][x]===V.LIT)vis[y][x]=V.SEEN;for(let dy=-vr;dy<=vr;dy++)for(let dx=-vr;dx<=vr;dx++){const nx=pos.x+dx,ny=pos.y+dy;if(nx>=0&&nx<DW&&ny>=0&&ny<DH&&Math.sqrt(dx*dx+dy*dy)<=vr)vis[ny][nx]=V.LIT;}return{...dg,vis};}
 let GS={scr:S.TITLE};
 // ── NippleJS joystick — init once when game starts ─────────────────────────
-let _nippleManager=null;
-function initJoystick(){
-  if(_nippleManager)return;
-  // Create persistent zone div sitting over the canvas wrapper
-  const zone=document.createElement('div');
-  zone.id='joy-zone';
-  zone.style.cssText='position:fixed;z-index:1000;pointer-events:auto;touch-action:none;';
-  document.body.appendChild(zone);
+// ── Virtual joystick — drawn directly on game canvas, pointer events on canvas ─
+// No separate DOM elements. Ring + thumb drawn in flickerLoop each frame.
+// Screen coords: +rawX=right(dx=1), +rawY=down(dy=1). Simple and correct.
 
-  // Size the zone to match the game canvas area only (excludes top bar + bottom bars)
-  function sizeJoyZone(){
-    const cv=document.querySelector('canvas');
-    if(!cv){setTimeout(sizeJoyZone,100);return;}
-    const r=cv.getBoundingClientRect();
-    zone.style.left=r.left+'px';
-    zone.style.top=r.top+'px';
-    zone.style.width=r.width+'px';
-    zone.style.height=r.height+'px';
-  }
-  setTimeout(sizeJoyZone,200);
-  window.addEventListener('resize',sizeJoyZone);
+const JOY_R   = 52;  // outer ring radius px
+const JOY_TR  = 22;  // thumb radius px
+const JOY_DEAD= 18;  // dead-zone radius px
 
-  _nippleManager=nipplejs.create({
-    zone,
-    mode:'static',
-    position:{left:'50%',top:'50%'},   // Center of canvas = center on player
-    color:{
-      front:'rgba(160,180,255,1)',
-      back:'rgba(30,40,120,0.85)'
-    },
-    size:90,
-    threshold:0.1,
-    restJoystick:true,
-    restOpacity:1,
-    fadeTime:50,
+let _joyActive=false, _joyOX=0, _joyOY=0, _joyCX=0, _joyCY=0;
+
+function drawJoystickOnCanvas(ctx){
+  if(!_joyActive)return;
+  const rawX=_joyCX-_joyOX, rawY=_joyCY-_joyOY;
+  const dist=Math.sqrt(rawX*rawX+rawY*rawY);
+  const scale=dist>JOY_R?JOY_R/dist:1;
+  const tx=_joyOX+rawX*scale, ty=_joyOY+rawY*scale;
+
+  ctx.save();
+  // Outer ring
+  ctx.beginPath();ctx.arc(_joyOX,_joyOY,JOY_R,0,Math.PI*2);
+  ctx.fillStyle='rgba(20,30,100,0.60)';ctx.fill();
+  ctx.strokeStyle='rgba(100,140,255,0.85)';ctx.lineWidth=2.5;ctx.stroke();
+  // Cardinal dots
+  ctx.fillStyle='rgba(140,170,255,0.45)';
+  [[0,-1],[0,1],[-1,0],[1,0]].forEach(([dx,dy])=>{
+    ctx.beginPath();ctx.arc(_joyOX+dx*(JOY_R-13),_joyOY+dy*(JOY_R-13),5,0,Math.PI*2);ctx.fill();
   });
-
-  let nippleDx=0,nippleDy=0;
-
-  _nippleManager.on('move',(_,data)=>{
-    if(GS.scr!==S.GAME)return;
-    const deg=data.angle.degree; // 0=right,90=up,180=left,270=down
-    let dx=0,dy=0;
-    if(deg>=315||deg<45){dx=1;}
-    else if(deg>=45&&deg<135){dy=-1;}
-    else if(deg>=135&&deg<225){dx=-1;}
-    else{dy=1;}
-    if(dx!==nippleDx||dy!==nippleDy){
-      nippleDx=dx;nippleDy=dy;
-      joyStop();
-      if(dx||dy){
-        dispatch({type:'MOVE',dx,dy});
-        JOY.dx=dx;JOY.dy=dy;JOY.active=true;
-        JOY.timer=setInterval(()=>{
-          if(GS.scr===S.GAME&&(JOY.dx||JOY.dy))dispatch({type:'MOVE',dx:JOY.dx,dy:JOY.dy});
-        },180);
-      }
-    }
-  });
-
-  _nippleManager.on('end',()=>{
-    nippleDx=0;nippleDy=0;
-    joyStop();
-  });
-
-  // Show/hide zone based on screen
-  function updateZoneVisibility(){
-    zone.style.display=(GS&&GS.scr===S.GAME)?'block':'none';
-  }
-  updateZoneVisibility();
-  // Re-check visibility after each dispatch
-  const _origUpdateVis=updateZoneVisibility;
-  window._joyUpdateVis=updateZoneVisibility;
+  // Thumb shadow
+  ctx.beginPath();ctx.arc(tx+2,ty+2,JOY_TR,0,Math.PI*2);
+  ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fill();
+  // Thumb
+  const tg=ctx.createRadialGradient(tx-6,ty-6,2,tx,ty,JOY_TR);
+  tg.addColorStop(0,'rgba(190,210,255,1)');
+  tg.addColorStop(1,'rgba(55,80,220,0.92)');
+  ctx.beginPath();ctx.arc(tx,ty,JOY_TR,0,Math.PI*2);
+  ctx.fillStyle=tg;ctx.fill();
+  ctx.strokeStyle='rgba(210,225,255,0.95)';ctx.lineWidth=1.8;ctx.stroke();
+  ctx.restore();
 }
+
+function _joyCalcMove(){
+  if(!_joyActive)return;
+  const rawX=_joyCX-_joyOX, rawY=_joyCY-_joyOY;
+  const dist=Math.sqrt(rawX*rawX+rawY*rawY);
+  if(dist<JOY_DEAD){if(JOY.dx||JOY.dy)joyStop();return;}
+  const T=JOY_DEAD*0.65;
+  const dx=rawX>T?1:rawX<-T?-1:0;
+  const dy=rawY>T?1:rawY<-T?-1:0;
+  if(dx!==JOY.dx||dy!==JOY.dy){
+    joyStop();
+    JOY.dx=dx;JOY.dy=dy;JOY.active=true;
+    if(dx||dy){
+      dispatch({type:'MOVE',dx,dy});
+      JOY.timer=setInterval(()=>{
+        if(GS.scr===S.GAME&&(JOY.dx||JOY.dy))
+          dispatch({type:'MOVE',dx:JOY.dx,dy:JOY.dy});
+      },160);
+    }
+  }
+}
+
+// Attach once to the global canvas element
+function updateZoneVisibility(){}  // no-op, joystick is on canvas
+window._joyUpdateVis=updateZoneVisibility;
+function initJoystick(){}  // no-op
+// canvas joystick listeners attached below after canvas is declared
 
 function dispatch(action){
   const prev=GS;
@@ -795,7 +787,25 @@ case'ASCEND':{
   return{...state,scr:scr2,floor:floor2,dg:dg2,pos:pos2,sq:sq2,story:state.story,floorObj:floorObj2,floorObjProg:0,floorObjDone:false,activeQuest:null,questProg:0,questDone:false,itemsUsed:0,log:[...msgs2,...state.log].slice(0,25),storyComplete:state.storyComplete||(floor2>=50)};
 }
 default:return state;}}
-const canvas=document.createElement('canvas');canvas.style.cssText='display:block;image-rendering:pixelated;image-rendering:crisp-edges;flex-shrink:0;';let canvasW=0,canvasH=0,pendingDraw=null;
+const canvas=document.createElement('canvas');canvas.style.cssText='display:block;image-rendering:pixelated;image-rendering:crisp-edges;flex-shrink:0;';
+// ── Joystick pointer events — must be after canvas declaration ────────────
+canvas.addEventListener('pointerdown',e=>{
+  if(GS.scr!==S.GAME)return;
+  e.preventDefault();
+  _joyActive=true;
+  _joyOX=e.offsetX;_joyOY=e.offsetY;
+  _joyCX=_joyOX;_joyCY=_joyOY;
+  _joyCalcMove();
+},{passive:false});
+canvas.addEventListener('pointermove',e=>{
+  if(!_joyActive)return;
+  e.preventDefault();
+  _joyCX=e.offsetX;_joyCY=e.offsetY;
+  _joyCalcMove();
+},{passive:false});
+const _joyEnd=()=>{_joyActive=false;joyStop();};
+canvas.addEventListener('pointerup',_joyEnd);
+canvas.addEventListener('pointercancel',_joyEnd);let canvasW=0,canvasH=0,pendingDraw=null;
 function hexToRgba(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgba(${r},${g},${b},${a})`;}
 function th(x,y){return((x*73856093^y*19349663)>>>0);}
 
@@ -1058,6 +1068,7 @@ function drawGame(ctx,state){
   if(ps.poison>0){ctx.fillStyle='#CC44CC';ctx.fillRect(psx+si*10,psy-12,8,6);si++;}
   if(ps.burn>0){ctx.fillStyle='#FF6600';ctx.fillRect(psx+si*10,psy-12,8,6);si++;}
   if(ps.frozen>0){ctx.fillStyle='#44AAFF';ctx.fillRect(psx+si*10,psy-12,8,6);si++;}
+  drawJoystickOnCanvas(ctx);
   drawMinimap(ctx,dg,pos);
 }
 
