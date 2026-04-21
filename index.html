@@ -226,7 +226,6 @@ const TALENTS=[
   {n:'Phantom Steps',d:'+12% Dodge Chance',fn:p=>{p.pb.dodge=(p.pb.dodge||0)+0.12;}},
   {n:'Thorn Armor',d:'Reflect 20% dmg to attackers',fn:p=>{p.pb.thorns=(p.pb.thorns||0)+0.2;}},
   {n:"Berserker's Rage",d:'+30 ATK when below 25% HP',fn:p=>{p.pb.berserk=(p.pb.berserk||0)+30;}},
-  {n:'Deep Pockets',d:'Inventory +15 slots',fn:p=>{p.invCap=(p.invCap||30)+15;}},
   {n:'Alchemy',d:'Potions heal 60% more',fn:p=>{p.potMult=(p.potMult||1)+0.6;}},
   {n:'Sixth Sense',d:'Vision radius +2',fn:p=>{p.pb.vis=(p.pb.vis||0)+2;}},
   {n:'Elemental Ward',d:'+8 DEF and +8 MGK',fn:p=>{p.pb.def=(p.pb.def||0)+8;p.pb.mgk=(p.pb.mgk||0)+8;}},
@@ -966,7 +965,7 @@ case'TALK':{
   return{...state,dg:newDg,sq,scr:S.STORY};
 }
 case'ASCEND':{
-  let floor2=state.floor+1,sq2=[...state.sq],scr2=S.GAME;
+  let floor2=state.floor+1,sq2=[],scr2=S.GAME;
   let dg2=mkDungeon(floor2),pos2={...dg2.start};
   let msgs2=[`Descended to floor ${floor2}!`];
   const mainStory=STORY_FLOORS[floor2];
@@ -977,13 +976,19 @@ case'ASCEND':{
   }else if(sideQ&&floor2<=50){
     sq2=[...sq2,{t:sideQ.title,tx:sideQ.text()}];scr2=S.STORY;
   }
-  if(dg2.isBossFloor&&floor2<=50)msgs2.push(`A powerful presence awaits...`);
+  if(dg2.isBossFloor&&floor2<=50){
+    msgs2.push(`⚠ BOSS FLOOR — a powerful presence awaits...`);
+    sq2=[{t:`Floor ${floor2} — Boss Awaits`,
+      tx:`The air grows heavy. Something ancient and powerful stirs in the darkness ahead. Prepare yourself before descending further.`,
+      isWarning:true},...sq2];
+    scr2=S.STORY;
+  }
   dg2=updateVis(dg2,pos2,calcStats(state.p).vis);
   const floorObj2=FLOOR_OBJECTIVES(floor2);
   if(floor2===50&&!state.storyComplete){
     sq2=[...sq2,{t:STORY_FLOORS[50].title,tx:STORY_FLOORS[50].text(state.p.cls,state.p.name),isEnding:true}];scr2=S.STORY;
   }
-  return{...state,scr:scr2,floor:floor2,dg:dg2,pos:pos2,sq:sq2,story:state.story,floorObj:floorObj2,floorObjProg:0,floorObjDone:false,activeQuest:null,questProg:0,questDone:false,itemsUsed:0,completedQuests:state.completedQuests||[],tutorial:state.tutorial,log:[...msgs2,...state.log].slice(0,25),storyComplete:state.storyComplete||(floor2>=50)};
+  return{...state,scr:scr2,floor:floor2,dg:dg2,pos:pos2,sq:sq2,story:state.story,floorObj:floorObj2,floorObjProg:0,floorObjDone:false,activeQuest:null,questProg:0,questDone:false,itemsUsed:0,completedQuests:state.completedQuests||[],tutorial:state.tutorial,log:msgs2,storyComplete:state.storyComplete||(floor2>=50)};
 }
 default:return state;}}
 const canvas=document.createElement('canvas');canvas.style.cssText='display:block;image-rendering:pixelated;image-rendering:crisp-edges;flex-shrink:0;';
