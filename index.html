@@ -445,7 +445,7 @@ const ATTACKS = {
         const dmg=Math.max(1,Math.round((st.atk+st.luk)*0.9+rnd(0,6)));
         return{dmg,msg:`Pizza launched! ${dmg}dmg`,col:'#FF6622',status:'stun'};
       }},
-    ult: {label:'Pizza Time', icon:'⭐', cd:0, chargeNeeded:5,
+    ult: {label:'Pizza Time', icon:'⭐', cd:0, chargeNeeded:5, range:3,
       fn:(p,e,st)=>{
         const dmg=Math.max(1,Math.round((st.atk+st.luk*2)*2.2+rnd(10,22)));
         return{dmg,msg:`PIZZA TIME! ${dmg}dmg!! 🍕`,col:'#FFD700',status:'stun',aoe:2};
@@ -462,7 +462,7 @@ const ATTACKS = {
         const dmg=Math.max(1,Math.round((st.mgk+st.int)*1.2+rnd(4,10)));
         return{dmg,msg:`Flash! ${dmg} magic dmg`,col:'#FFFF88',status:'burn'};
       }},
-    ult: {label:'Going Viral', icon:'🔥', cd:0, chargeNeeded:5,
+    ult: {label:'Going Viral', icon:'🔥', cd:0, chargeNeeded:5, range:4,
       fn:(p,e,st)=>{
         const dmg=Math.max(1,Math.round((st.mgk+st.int*2.2)*2.4+rnd(12,24)));
         return{dmg,msg:`GOING VIRAL! ${dmg} spicy magic! 🌶️`,col:'#FF8800',status:'burn',aoe:3};
@@ -479,7 +479,7 @@ const ATTACKS = {
         const dmg=Math.max(1,Math.round((st.atk+st.dex*1.5+st.int)*1.3+rnd(5,12)));
         return{dmg,msg:`Drone Strike! ${dmg} precision dmg 🚁`,col:'#44CCFF',status:'burn'};
       }},
-    ult: {label:'Airstrike', icon:'💥', cd:0, chargeNeeded:5,
+    ult: {label:'Airstrike', icon:'💥', cd:0, range:3, chargeNeeded:5,
       fn:(p,e,st)=>{
         const dmg=Math.max(1,Math.round((st.atk+st.int*2+st.dex*1.5)*2.2+rnd(10,20)));
         return{dmg,msg:`AIRSTRIKE! ${dmg} dmg! 💥`,col:'#00FFFF',status:'burn',aoe:3};
@@ -496,7 +496,7 @@ const ATTACKS = {
         const dmg=Math.max(1,Math.round((st.mgk+st.int*1.8)*1.2+rnd(4,10)));
         return{dmg,msg:`Mana bolt! ${dmg} magic dmg ✨`,col:'#DD88FF',status:'poison'};
       }},
-    ult: {label:'Senpai Notice Me', icon:'💫', cd:0, chargeNeeded:5,
+    ult: {label:'Senpai Notice Me', icon:'💫', cd:0, range:3, chargeNeeded:5,
       fn:(p,e,st)=>{
         const dmg=Math.max(1,Math.round((st.mgk+st.int*1.8)*2.5+rnd(12,22)));
         return{dmg,msg:`SENPAI NOTICE ME! ${dmg} NANI?! 🐱`,col:'#FF88FF',status:'poison',aoe:2};
@@ -544,7 +544,7 @@ function initGame(name,cls){const cd=CLS[cls],dg=mkDungeon(1),st=mkStory();const
   return{scr:S.STORY,floor:1,p,dg:dg2,pos:{...dg.start},story,
     floorObj:floorObj1,floorObjProg:0,floorObjDone:false,
     activeQuest:null,questProg:0,questDone:false,itemsUsed:0,completedQuests:[],
-    sq:[{t:STORY_FLOORS[1].title,tx:STORY_FLOORS[1].text(p.cls,name)}],log:['Adventure begins! WASD/Arrows=move | Q=skill | I=inventory'],turn:0,floats:[]};}
+    sq:[{t:STORY_FLOORS[1].title,tx:STORY_FLOORS[1].text(p.cls,name)}],tutorial:{step:0,active:true},log:['Adventure begins! WASD/Arrows=move | Q=skill | I=inventory'],turn:0,floats:[]};}
 function updateVis(dg,pos,vr){const vis=dg.vis.map(r=>[...r]);for(let y=0;y<DH;y++)for(let x=0;x<DW;x++)if(vis[y][x]===V.LIT)vis[y][x]=V.SEEN;for(let dy=-vr;dy<=vr;dy++)for(let dx=-vr;dx<=vr;dx++){const nx=pos.x+dx,ny=pos.y+dy;if(nx>=0&&nx<DW&&ny>=0&&ny<DH&&Math.sqrt(dx*dx+dy*dy)<=vr)vis[ny][nx]=V.LIT;}return{...dg,vis};}
 let GS={scr:S.TITLE};
 // ── NippleJS joystick — init once when game starts ─────────────────────────
@@ -664,7 +664,29 @@ function dispatch(action){
   render();
 }
 function processKill(np,e,f,msgs,floats){const gGain=Math.round(rnd(Math.floor(e.xp/3),e.xp)*(np.goldMult||1));np.xp+=e.xp;np.gold+=gGain;msgs.push(`${e.n} slain! +${e.xp}XP +${gGain}g`);if(e.boss)msgs.push(`BOSS DEFEATED!`);if(Math.random()<(e.boss?.7:.42)){const li=mkItem(f+(e.boss?3:0));np.inv=[...np.inv,li];msgs.push(`Loot: ${li.dn}`);}let pendingTalent=false;while(np.xp>=xpN(np.lv+1)){np.lv++;const s=calcStats(np);np.hp=Math.min(np.hp+40,s.mhp);msgs.push(`LEVEL UP! Lv.${np.lv}!`);pendingTalent=true;}return{np,pendingTalent};}
-function reduce(state,action){switch(action.type){case'START':return initGame(action.name,action.cls);case'RESTART':return{scr:S.TITLE};case'DISMISS':{const sq=state.sq.slice(1);return{...state,scr:sq.length?S.STORY:S.GAME,sq};}case'TOGGLE_INV':return{...state,scr:state.scr===S.INV?S.GAME:S.INV};case'OPEN_MERCHANT':return{...state,scr:S.MERCHANT};case'CLOSE_MERCHANT':return{...state,scr:S.GAME};case'OPEN_QUEST':return{...state,scr:S.QUEST};case'CLOSE_QUEST':return{...state,scr:S.GAME};case'BUY':{const it=state.dg.merchantInv[action.i];if(!it)return state;const cost=Math.round((it.val||20)*2);if(state.p.gold<cost)return{...state,log:['Not enough gold!',...state.log].slice(0,25)};return{...state,p:{...state.p,gold:state.p.gold-cost,inv:[...state.p.inv,it]},dg:{...state.dg,merchantInv:state.dg.merchantInv.filter((_,i)=>i!==action.i)},log:[`Bought ${it.dn} for ${cost}g`,...state.log].slice(0,25)};}case'SELL':{const it=state.p.inv[action.i];if(!it)return state;const val=Math.max(1,Math.round((it.val||10)/2));return{...state,p:{...state.p,gold:state.p.gold+val,inv:state.p.inv.filter((_,i)=>i!==action.i)},log:[`Sold ${it.dn} for ${val}g`,...state.log].slice(0,25)};}case'PICK_TALENT':{const talent=action.talent,np={...state.p,pb:{...state.p.pb}};talent.fn(np);return{...state,scr:S.GAME,p:np,log:[`Talent: ${talent.n}`,...state.log].slice(0,25),pendingTalents:null};}case'MOVE':{if(state.scr!==S.GAME)return state;const{dx,dy}=action;if(state.p.status?.frozen>0){let np=tickStatus({...state.p},[]);np.hp=Math.max(0,np.hp);if(np.hp<=0)return{...state,scr:S.DEATH,p:np};return{...state,p:np,dg:updateVis(state.dg,state.pos,calcStats(np).vis),log:['Frozen! Cannot move.',...state.log].slice(0,25),floats:[],turn:state.turn+1};}const nx=state.pos.x+dx,ny=state.pos.y+dy;if(nx<0||nx>=DW||ny<0||ny>=DH)return state;const tile=state.dg.tiles[ny]?.[nx];if(tile===T.WALL||tile===undefined)return state;let msgs=[],np={...state.p},dg={...state.dg},pos=state.pos,floor=state.floor,sq=[...state.sq],scr=S.GAME,floats=[],pendingTalents=null;const isMoving=dx!==0||dy!==0;const eidx=dg.enemies.findIndex(e=>e.x===nx&&e.y===ny&&e.hp>0);if(eidx!==-1){const{p:p2,e:e2,msgs:m,floats:fl}=pAtk(np,dg.enemies[eidx],'basic');np=p2;floats=[...floats,...fl];msgs.push(...m);let ne=[...dg.enemies];const{hp:eHp,statusDmg:sd}=tickEnemyStatus(e2);if(sd>0){msgs.push(`${e2.n}: ${sd} status`);floats.push({x:e2.x,y:e2.y,txt:sd,col:'#AA44AA'});}const finalE={...e2,hp:eHp};if(finalE.hp<=0){const killedEnemy=dg.enemies[eidx];
+function hasLOS(tiles,x1,y1,x2,y2){
+  // Bresenham line check — returns false if any wall tile is between two points
+  let dx=Math.abs(x2-x1),dy=Math.abs(y2-y1);
+  let sx=x1<x2?1:-1,sy=y1<y2?1:-1;
+  let err=dx-dy,x=x1,y=y1;
+  while(true){
+    if(x===x2&&y===y2)return true;
+    if(tiles[y]?.[x]===T.WALL)return false;
+    const e2=2*err;
+    if(e2>-dy){err-=dy;x+=sx;}
+    if(e2<dx){err+=dx;y+=sy;}
+  }
+}
+
+
+function reduce(state,action){switch(action.type){case'START':return initGame(action.name,action.cls);case'TUT_NEXT':{
+  const t=state.tutorial||{step:0,active:true};
+  const next=t.step+1;
+  if(next>=TUTORIAL_STEPS.length)return{...state,tutorial:{step:0,active:false}};
+  return{...state,tutorial:{step:next,active:true}};
+}
+case'TUT_SKIP':return{...state,tutorial:{step:0,active:false}};
+case'RESTART':return{scr:S.TITLE};case'DISMISS':{const sq=state.sq.slice(1);return{...state,scr:sq.length?S.STORY:S.GAME,sq};}case'TOGGLE_INV':return{...state,scr:state.scr===S.INV?S.GAME:S.INV};case'OPEN_MERCHANT':return{...state,scr:S.MERCHANT};case'CLOSE_MERCHANT':return{...state,scr:S.GAME};case'OPEN_QUEST':return{...state,scr:S.QUEST};case'CLOSE_QUEST':return{...state,scr:S.GAME};case'BUY':{const it=state.dg.merchantInv[action.i];if(!it)return state;const cost=Math.round((it.val||20)*2);if(state.p.gold<cost)return{...state,log:['Not enough gold!',...state.log].slice(0,25)};return{...state,p:{...state.p,gold:state.p.gold-cost,inv:[...state.p.inv,it]},dg:{...state.dg,merchantInv:state.dg.merchantInv.filter((_,i)=>i!==action.i)},log:[`Bought ${it.dn} for ${cost}g`,...state.log].slice(0,25)};}case'SELL':{const it=state.p.inv[action.i];if(!it)return state;const val=Math.max(1,Math.round((it.val||10)/2));return{...state,p:{...state.p,gold:state.p.gold+val,inv:state.p.inv.filter((_,i)=>i!==action.i)},log:[`Sold ${it.dn} for ${val}g`,...state.log].slice(0,25)};}case'PICK_TALENT':{const talent=action.talent,np={...state.p,pb:{...state.p.pb}};talent.fn(np);return{...state,scr:S.GAME,p:np,log:[`Talent: ${talent.n}`,...state.log].slice(0,25),pendingTalents:null};}case'MOVE':{if(state.scr!==S.GAME)return state;const{dx,dy}=action;if(state.p.status?.frozen>0){let np=tickStatus({...state.p},[]);np.hp=Math.max(0,np.hp);if(np.hp<=0)return{...state,scr:S.DEATH,p:np};return{...state,p:np,dg:updateVis(state.dg,state.pos,calcStats(np).vis),log:['Frozen! Cannot move.',...state.log].slice(0,25),floats:[],turn:state.turn+1};}const nx=state.pos.x+dx,ny=state.pos.y+dy;if(nx<0||nx>=DW||ny<0||ny>=DH)return state;const tile=state.dg.tiles[ny]?.[nx];if(tile===T.WALL||tile===undefined)return state;let msgs=[],np={...state.p},dg={...state.dg},pos=state.pos,floor=state.floor,sq=[...state.sq],scr=S.GAME,floats=[],pendingTalents=null;const isMoving=dx!==0||dy!==0;const eidx=dg.enemies.findIndex(e=>e.x===nx&&e.y===ny&&e.hp>0);if(eidx!==-1){const{p:p2,e:e2,msgs:m,floats:fl}=pAtk(np,dg.enemies[eidx],'basic');np=p2;floats=[...floats,...fl];msgs.push(...m);let ne=[...dg.enemies];const{hp:eHp,statusDmg:sd}=tickEnemyStatus(e2);if(sd>0){msgs.push(`${e2.n}: ${sd} status`);floats.push({x:e2.x,y:e2.y,txt:sd,col:'#AA44AA'});}const finalE={...e2,hp:eHp};if(finalE.hp<=0){const killedEnemy=dg.enemies[eidx];
       const{np:np2,pendingTalent}=processKill(np,killedEnemy,floor,msgs,floats);np=np2;ne.splice(eidx,1);
       // ── Quest kill tracking ──
       const fo=state.floorObj;let fop=state.floorObjProg,fod=state.floorObjDone;
@@ -693,7 +715,7 @@ function reduce(state,action){switch(action.type){case'START':return initGame(ac
     const adjNpc=dg.npcs&&dg.npcs.find(n=>n.hp!==0&&Math.abs(n.x-nx)<=1&&Math.abs(n.y-ny)<=1);
     if(adjNpc&&!adjNpc.talked){msgs.push(`Talk to ${adjNpc.name}: press [E] / tap TALK`);}}
 }
-np=tickStatus(np,msgs);if(np.hp<=0)return{...state,scr:S.DEATH,p:np,log:[...msgs,...state.log].slice(0,30)};if(np.scd>0)np.scd--;if(np.rcd>0)np.rcd--;if(np.ucd>0)np.ucd--;const maxHp=calcStats(np).mhp;if(np.hp>maxHp)np.hp=maxHp;dg=updateVis(dg,pos,calcStats(np).vis);// ── Explore objective tracking ─────────────────────────────────────────────
+np=tickStatus(np,msgs);if(np.hp<=0)return{...state,scr:S.DEATH,p:np,log:[...msgs,...state.log].slice(0,30)};const maxHp=calcStats(np).mhp;if(np.hp>maxHp)np.hp=maxHp;dg=updateVis(dg,pos,calcStats(np).vis);// ── Explore objective tracking ─────────────────────────────────────────────
   let finFop=state.floorObjProg,finFod=state.floorObjDone;
   if(state.floorObj&&state.floorObj.type===QT.EXPLORE&&!state.floorObjDone){
     // Count floor tiles that are SEEN or LIT
@@ -737,7 +759,11 @@ case'ULT_ATK':{
   }
 
   const range=atkDef.range;
-  const targets=state.dg.enemies.filter(e=>e.hp>0&&cdist(e,state.pos)<=range)
+  const isRangedOrUlt=isRanged||isUlt;
+  const targets=state.dg.enemies
+    .filter(e=>e.hp>0&&cdist(e,state.pos)<=range&&
+      // LOS required for ranged/ult attacks — melee ignores (bump means adjacent)
+      (!isRangedOrUlt||hasLOS(state.dg.tiles,state.pos.x,state.pos.y,e.x,e.y)))
     .sort((a,b)=>cdist(a,state.pos)-cdist(b,state.pos));
   if(!targets.length)
     return{...state,log:[range>1?'No target in range!':'No adjacent enemy!',...state.log].slice(0,25)};
@@ -808,9 +834,7 @@ case'ULT_ATK':{
 
   np=tickStatus(np,msgs);
   if(np.hp<=0)return{...state,scr:S.DEATH,p:np,log:[...msgs,...state.log].slice(0,30)};
-  if(np.scd>0)np.scd--;
-  if(np.rcd>0)np.rcd--;
-  const dg2=updateVis({...state.dg,enemies:ne},state.pos,calcStats(np).vis);
+    const dg2=updateVis({...state.dg,enemies:ne},state.pos,calcStats(np).vis);
   return{...state,scr,p:np,dg:dg2,floorObjProg:fop,floorObjDone:fod,questProg:qp,
     questDone:state.questDone||qd,activeQuest:state.activeQuest,
     log:[...msgs,...state.log].slice(0,25),turn:state.turn+1,floats,pendingTalents};
@@ -895,6 +919,10 @@ case'ENEMY_TICK':{
       }
     });
   }
+  // Tick attack cooldowns every enemy tick (400ms)
+  if(np.scd>0)np.scd--;
+  if(np.rcd>0)np.rcd--;
+  if(np.ucd>0)np.ucd--;
   return{...state,p:np,dg,log:[...msgs,...state.log].slice(0,25),floats,turn:state.turn+1};
 }
 case'ACCEPT_QUEST':{
@@ -955,7 +983,7 @@ case'ASCEND':{
   if(floor2===50&&!state.storyComplete){
     sq2=[...sq2,{t:STORY_FLOORS[50].title,tx:STORY_FLOORS[50].text(state.p.cls,state.p.name),isEnding:true}];scr2=S.STORY;
   }
-  return{...state,scr:scr2,floor:floor2,dg:dg2,pos:pos2,sq:sq2,story:state.story,floorObj:floorObj2,floorObjProg:0,floorObjDone:false,activeQuest:null,questProg:0,questDone:false,itemsUsed:0,completedQuests:state.completedQuests||[],log:[...msgs2,...state.log].slice(0,25),storyComplete:state.storyComplete||(floor2>=50)};
+  return{...state,scr:scr2,floor:floor2,dg:dg2,pos:pos2,sq:sq2,story:state.story,floorObj:floorObj2,floorObjProg:0,floorObjDone:false,activeQuest:null,questProg:0,questDone:false,itemsUsed:0,completedQuests:state.completedQuests||[],tutorial:state.tutorial,log:[...msgs2,...state.log].slice(0,25),storyComplete:state.storyComplete||(floor2>=50)};
 }
 default:return state;}}
 const canvas=document.createElement('canvas');canvas.style.cssText='display:block;image-rendering:pixelated;image-rendering:crisp-edges;flex-shrink:0;';
@@ -1997,6 +2025,98 @@ function renderQuestLog(root,st){
   div.appendChild(body);root.appendChild(div);
 }
 
+// ── Tutorial overlay definitions ─────────────────────────────────────────────
+const TUTORIAL_STEPS = [
+  {
+    id:'attacks',
+    title:'⚔ Combat',
+    body:'Tap or press keys to attack enemies. You have three attacks:\n• Q / 👊 Regular — fast melee, builds ult charge\n• F / 🚁 Ranged — hits from a distance, longer cooldown\n• R / ⭐ Ultimate — charges after 5 attacks, devastates nearby enemies',
+    highlight:'action-bar',
+    pos:'top',
+  },
+  {
+    id:'movement',
+    title:'🕹 Movement',
+    body:'Use the joystick (touch) or WASD / Arrow Keys to move.\nWalk into enemies to bump-attack them or use the attack buttons.\nE = talk to NPCs · I = inventory · J = quest journal',
+    highlight:null,
+    pos:'center',
+  },
+  {
+    id:'objective',
+    title:'🎯 Floor Objective',
+    body:'Each floor has an objective — explore a % of the floor, defeat enemies, or slay the boss.\nYou must complete the objective before you can descend the stairs.',
+    highlight:'obj-bar',
+    pos:'top',
+  },
+  {
+    id:'log',
+    title:'📋 Combat Log',
+    body:'The log shows combat results, quest updates and item pickups.\nWatch it to track damage, status effects and important events.',
+    highlight:'log-row',
+    pos:'top',
+  },
+  {
+    id:'bag',
+    title:'🎒 Bag & Equipment',
+    body:'Open your bag with I (keyboard) or the BAG button.\n• GEAR tab — your equipped items. Tap a slot to unequip.\n• BAG tab — all items. Tap an item then EQUIP or USE.\n• STATS tab — all your current stats and talents.\nBetter rarity = better stats. Equip to survive!',
+    highlight:'bottom-ctrl',
+    pos:'bottom',
+  },
+  {
+    id:'quest',
+    title:'📜 Quest Journal',
+    body:'Tap 📜 QUESTS or press J to open the Quest Journal.\nTrack your floor objective, active NPC quests, and ultimate charge.\nCompleted quests are saved so you can follow the story.',
+    highlight:'bottom-ctrl',
+    pos:'bottom',
+  },
+];
+
+function renderTutorialOverlay(root, step, dispatch){
+  const def = TUTORIAL_STEPS[step];
+  if(!def) return;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:2000;pointer-events:none;';
+
+  // Dark backdrop
+  const backdrop = document.createElement('div');
+  backdrop.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.72);pointer-events:auto;';
+  overlay.appendChild(backdrop);
+
+  // Info card
+  const card = document.createElement('div');
+  const isBottom = def.pos === 'bottom';
+  const isTop    = def.pos === 'top';
+  card.style.cssText = `position:absolute;${isBottom?'bottom:120px':'top:140px'};left:50%;transform:translateX(-50%);width:min(320px,90vw);background:#0e0e1e;border:2px solid #4a4aaa;border-radius:14px;padding:18px 20px;pointer-events:auto;z-index:2001;`;
+  
+  const stepLabel = `Step ${step+1} of ${TUTORIAL_STEPS.length}`;
+  card.innerHTML = `
+    <div style="font-size:9px;color:#666;letter-spacing:3px;margin-bottom:8px;">${stepLabel}</div>
+    <div style="font-size:16px;font-weight:bold;color:#FFD700;margin-bottom:12px;">${def.title}</div>
+    <div style="font-size:12px;color:#bbb;line-height:1.8;white-space:pre-line;margin-bottom:18px;">${def.body}</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button id="tut-skip" style="padding:8px 16px;background:none;border:1px solid #333;border-radius:8px;color:#555;font-size:11px;cursor:pointer;font-family:monospace;">Skip tutorial</button>
+      <button id="tut-next" style="padding:8px 20px;background:#2a2a6a;border:2px solid #5555cc;border-radius:8px;color:#aaaaff;font-size:12px;font-weight:bold;cursor:pointer;font-family:monospace;">${step===TUTORIAL_STEPS.length-1?'Play! ▶':'Next ▶'}</button>
+    </div>`;
+
+  // Pip indicators
+  const pips = document.createElement('div');
+  pips.style.cssText = 'display:flex;gap:5px;justify-content:center;margin-bottom:14px;';
+  TUTORIAL_STEPS.forEach((_,i)=>{
+    const pip = document.createElement('div');
+    pip.style.cssText = `width:${i===step?18:6}px;height:6px;border-radius:3px;background:${i===step?'#5555cc':i<step?'#334':'#1a1a2a'};transition:all .2s;`;
+    pips.appendChild(pip);
+  });
+  card.insertBefore(pips, card.querySelector('#tut-skip').parentElement);
+
+  overlay.appendChild(card);
+  root.appendChild(overlay);
+
+  card.querySelector('#tut-next').addEventListener('click',()=>dispatch({type:'TUT_NEXT'}));
+  card.querySelector('#tut-skip').addEventListener('click',()=>dispatch({type:'TUT_SKIP'}));
+}
+
+
 function render(){const root=document.getElementById('root');if(!root)return;root.innerHTML='';root.style.cssText='display:flex;flex-direction:column;height:100vh;width:100%;overflow:hidden;background:#07070f;';const st=GS;if(st.scr===S.TITLE)renderTitle(root);else if(st.scr===S.STORY)renderStory(root,st);else if(st.scr===S.GAME)renderGame(root,st);else if(st.scr===S.INV)renderInv(root,st);else if(st.scr===S.MERCHANT)renderMerchant(root,st);else if(st.scr===S.TALENT)renderTalent(root,st);else if(st.scr===S.DEATH)renderDeath(root,st);else if(st.scr===S.QUEST)renderQuestLog(root,st);else if(st.scr===S.STAIRS)renderStairs(root,st);}
 function renderTitle(root){const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px 16px;gap:12px;overflow-y:auto;';let selCls='doom',pName='';div.innerHTML='<div style="text-align:center;"><div style="font-size:24px;font-weight:bold;color:#FFD700;letter-spacing:2px;">DUNGEON DESCENT</div><div style="font-size:9px;color:#444;letter-spacing:3px;margin-top:3px;">ENHANCED EDITION</div></div><div style="width:100%;max-width:320px;"><div style="font-size:11px;color:#666;margin-bottom:5px;">Your name:</div><input id="pname" type="text" maxlength="20" placeholder="Hero name..." style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:9px 11px;color:#fff;font-size:14px;font-family:monospace;"></div><div style="width:100%;max-width:320px;"><div style="font-size:11px;color:#666;margin-bottom:6px;">Choose class:</div><div id="cls-list"></div></div><button id="start-btn" style="padding:11px 36px;background:#FFD700;color:#000;border:none;border-radius:7px;font-size:14px;font-weight:bold;cursor:pointer;font-family:monospace;">BEGIN DESCENT</button><div style="font-size:9px;color:#333;text-align:center;line-height:1.7;">Move: Arrows/WASD | Skill: Q | Inventory: I | Wait: Space</div>';root.appendChild(div);const ni=div.querySelector('#pname');ni.addEventListener('input',e=>{pName=e.target.value;});const cl=div.querySelector('#cls-list');const cards={};Object.entries(CLS).forEach(([k,c])=>{const card=document.createElement('div');card.style.cssText=`border:2px solid ${k==='doom'?c.col:'#333'};border-radius:7px;padding:9px 12px;margin-bottom:7px;cursor:pointer;background:${k==='doom'?c.col+'22':'#111'};`;card.innerHTML=`<div style="font-size:13px;font-weight:bold;color:${c.col};">${c.n}</div><div style="font-size:10px;color:#777;margin-top:2px;">${c.desc}</div>`;card.addEventListener('click',()=>{selCls=k;Object.entries(cards).forEach(([ck,cv])=>{const cc=CLS[ck];cv.style.borderColor=ck===k?cc.col:'#333';cv.style.background=ck===k?cc.col+'22':'#111';});});cards[k]=card;cl.appendChild(card);});div.querySelector('#start-btn').addEventListener('click',()=>{if((pName||'').trim()){AUD.ctx();if(_audSettings.music)AUD.playMusic('explore');dispatch({type:'START',name:pName.trim(),cls:selCls});initJoystick();}});}
 function renderStory(root,st){const ev=st.sq[0];if(!ev)return;
@@ -2205,6 +2325,9 @@ audBtns.style.cssText='display:flex;gap:4px;align-items:center;';
 });
 ctrl.insertBefore(audBtns,invBtn);
 root.appendChild(ctrl);
+
+// ── Tutorial overlay ─────
+if(GS.tutorial&&GS.tutorial.active){renderTutorialOverlay(root,GS.tutorial.step,dispatch);}
 
 // ── NippleJS joystick handled by initJoystick() ─────────────────────────────
 }
@@ -2579,7 +2702,7 @@ function renderStairs(root,st){
 }
 
 function renderDeath(root,st){const{p,floor,log}=st;const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:#0a0005;padding:24px;';div.innerHTML=`<div style="font-size:50px;margin-bottom:10px;opacity:.8;">X</div><div style="font-size:24px;color:#CC0000;font-weight:bold;margin-bottom:7px;letter-spacing:2px;">YOU DIED</div><div style="font-size:12px;color:#666;margin-bottom:6px;">${p.name} the ${CLS[p.cls].n} fell on floor ${floor}</div><div style="font-size:11px;color:#444;margin-bottom:18px;">Level ${p.lv} | ${p.xp} XP | ${p.gold} gold</div><div style="max-width:280px;font-size:9px;color:#333;text-align:center;line-height:1.8;margin-bottom:24px;border:1px solid #1a0010;border-radius:7px;padding:10px;">${log.slice(0,5).join('<br>')}</div><button id="retry" style="padding:11px 32px;background:#CC0000;border:none;border-radius:7px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;font-family:monospace;">TRY AGAIN</button>`;root.appendChild(div);div.querySelector('#retry').addEventListener('click',()=>dispatch({type:'RESTART'}));}
-document.addEventListener('keydown',e=>{if(document.activeElement&&document.activeElement.tagName==='INPUT')return;const km={ArrowUp:{type:'MOVE',dx:0,dy:-1},ArrowDown:{type:'MOVE',dx:0,dy:1},ArrowLeft:{type:'MOVE',dx:-1,dy:0},ArrowRight:{type:'MOVE',dx:1,dy:0},w:{type:'MOVE',dx:0,dy:-1},s:{type:'MOVE',dx:0,dy:1},a:{type:'MOVE',dx:-1,dy:0},d:{type:'MOVE',dx:1,dy:0},q:{type:'SKILL'},i:{type:'TOGGLE_INV'},e:{type:'TALK_ADJ'},' ':{type:'MOVE',dx:0,dy:0},z:{type:'MOVE',dx:0,dy:0},Enter:{type:'DISMISS'}};const act=km[e.key];if(act){e.preventDefault();dispatch(act);}if(e.key==='m'||e.key==='M'){e.preventDefault();showMap=!showMap;}});
+document.addEventListener('keydown',e=>{if(document.activeElement&&document.activeElement.tagName==='INPUT')return;const km={ArrowUp:{type:'MOVE',dx:0,dy:-1},ArrowDown:{type:'MOVE',dx:0,dy:1},ArrowLeft:{type:'MOVE',dx:-1,dy:0},ArrowRight:{type:'MOVE',dx:1,dy:0},w:{type:'MOVE',dx:0,dy:-1},s:{type:'MOVE',dx:0,dy:1},a:{type:'MOVE',dx:-1,dy:0},d:{type:'MOVE',dx:1,dy:0},q:{type:'NORMAL_ATK'},f:{type:'RANGED_ATK'},r:{type:'ULT_ATK'},i:{type:'TOGGLE_INV'},e:{type:'TALK_ADJ'},j:{type:'OPEN_QUEST'},' ':{type:'MOVE',dx:0,dy:0},z:{type:'MOVE',dx:0,dy:0},Enter:{type:'DISMISS'}};const act=km[e.key];if(act){e.preventDefault();dispatch(act);}if(e.key==='m'||e.key==='M'){e.preventDefault();showMap=!showMap;}});
 document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 setInterval(()=>{if(GS.scr===S.GAME)dispatch({type:'ENEMY_TICK'});},400);
 (function flickerLoop(){
