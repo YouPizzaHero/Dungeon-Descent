@@ -21,7 +21,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 const TS=38,DW=58,DH=58,VR=7;
 const T={VOID:0,WALL:1,FLOOR:2,CHEST:3,STAIRS:4,MERCHANT:5,NPC:6};
 const V={DARK:0,SEEN:1,LIT:2};
-const S={TITLE:'title',GAME:'game',STORY:'story',INV:'inv',DEATH:'death',MERCHANT:'merchant',TALENT:'talent',STAIRS:'stairs'};
+const S={TITLE:'title',GAME:'game',STORY:'story',INV:'inv',DEATH:'death',MERCHANT:'merchant',TALENT:'talent',STAIRS:'stairs',QUEST:'quest'};
 const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -432,6 +432,78 @@ const CLS={
 };
 const SKNAMES={doom:'Pizza Time',camp:'Going Viral',tact:'Drone Strike',anime:'Senpai Notice Me'};
 const xpN=lv=>Math.floor(100*Math.pow(1.5,lv-1));
+// ── Per-class attack definitions ─────────────────────────────────────────
+const ATTACKS = {
+  doom:{
+    normal: {label:'Punch', icon:'👊', cd:1, range:1,
+      fn:(p,e,st)=>{
+        const dmg=Math.max(1,Math.round(st.atk*1.1+rnd(-2,4)));
+        return{dmg,msg:`${p.name} punches! ${dmg}dmg`,col:'#FF9944',status:null};
+      }},
+    ranged: {label:'Pizza Toss', icon:'🍕', cd:4, range:5,
+      fn:(p,e,st)=>{
+        const dmg=Math.max(1,Math.round((st.atk+st.luk)*0.9+rnd(0,6)));
+        return{dmg,msg:`Pizza launched! ${dmg}dmg`,col:'#FF6622',status:'stun'};
+      }},
+    ult: {label:'Pizza Time', icon:'⭐', cd:0, chargeNeeded:5,
+      fn:(p,e,st)=>{
+        const dmg=Math.max(1,Math.round((st.atk+st.luk*2)*2.2+rnd(10,22)));
+        return{dmg,msg:`PIZZA TIME! ${dmg}dmg!! 🍕`,col:'#FFD700',status:'stun',aoe:2};
+      }},
+  },
+  camp:{
+    normal: {label:'Punch', icon:'👊', cd:1, range:1,
+      fn:(p,e,st)=>{
+        const dmg=Math.max(1,Math.round(st.atk*1.0+rnd(-2,4)));
+        return{dmg,msg:`Camera swing! ${dmg}dmg`,col:'#F5A623',status:null};
+      }},
+    ranged: {label:'Flash Bang', icon:'📸', cd:5, range:6,
+      fn:(p,e,st)=>{
+        const dmg=Math.max(1,Math.round((st.mgk+st.int)*1.2+rnd(4,10)));
+        return{dmg,msg:`Flash! ${dmg} magic dmg`,col:'#FFFF88',status:'burn'};
+      }},
+    ult: {label:'Going Viral', icon:'🔥', cd:0, chargeNeeded:5,
+      fn:(p,e,st)=>{
+        const dmg=Math.max(1,Math.round((st.mgk+st.int*2.2)*2.4+rnd(12,24)));
+        return{dmg,msg:`GOING VIRAL! ${dmg} spicy magic! 🌶️`,col:'#FF8800',status:'burn',aoe:3};
+      }},
+  },
+  tact:{
+    normal: {label:'Punch', icon:'👊', cd:1, range:1,
+      fn:(p,e,st)=>{
+        const dmg=Math.max(1,Math.round(st.atk*1.0+rnd(-2,4)));
+        return{dmg,msg:`Quick jab! ${dmg}dmg`,col:'#44CCFF',status:null};
+      }},
+    ranged: {label:'Drone Strike', icon:'🚁', cd:4, range:7,
+      fn:(p,e,st)=>{
+        const dmg=Math.max(1,Math.round((st.atk+st.dex*1.5+st.int)*1.3+rnd(5,12)));
+        return{dmg,msg:`Drone Strike! ${dmg} precision dmg 🚁`,col:'#44CCFF',status:'burn'};
+      }},
+    ult: {label:'Airstrike', icon:'💥', cd:0, chargeNeeded:5,
+      fn:(p,e,st)=>{
+        const dmg=Math.max(1,Math.round((st.atk+st.int*2+st.dex*1.5)*2.2+rnd(10,20)));
+        return{dmg,msg:`AIRSTRIKE! ${dmg} dmg! 💥`,col:'#00FFFF',status:'burn',aoe:3};
+      }},
+  },
+  anime:{
+    normal: {label:'Swipe', icon:'🐱', cd:1, range:1,
+      fn:(p,e,st)=>{
+        const dmg=Math.max(1,Math.round(st.atk*1.0+rnd(-2,4)));
+        return{dmg,msg:`Cat swipe! ${dmg}dmg`,col:'#CC88FF',status:null};
+      }},
+    ranged: {label:'Mana Bolt', icon:'✨', cd:5, range:6,
+      fn:(p,e,st)=>{
+        const dmg=Math.max(1,Math.round((st.mgk+st.int*1.8)*1.2+rnd(4,10)));
+        return{dmg,msg:`Mana bolt! ${dmg} magic dmg ✨`,col:'#DD88FF',status:'poison'};
+      }},
+    ult: {label:'Senpai Notice Me', icon:'💫', cd:0, chargeNeeded:5,
+      fn:(p,e,st)=>{
+        const dmg=Math.max(1,Math.round((st.mgk+st.int*1.8)*2.5+rnd(12,22)));
+        return{dmg,msg:`SENPAI NOTICE ME! ${dmg} NANI?! 🐱`,col:'#FF88FF',status:'poison',aoe:2};
+      }},
+  },
+};
+
 function calcStats(p){const c=CLS[p.cls],pb=p.pb||{};let str=c.str,int=c.int,dex=c.dex,vit=c.vit,luk=c.luk;let atk=pb.atk||0,def=pb.def||0,mgk=pb.mgk||0,mhp=pb.mhp||0;let ls=pb.ls||0,crit=pb.crit||0,dodge=pb.dodge||0,regen=pb.regen||0,thorns=pb.thorns||0;Object.values(p.eq).forEach(it=>{if(!it)return;str+=it.str||0;int+=it.int||0;dex+=it.dex||0;vit+=it.vit||0;luk+=it.luk||0;atk+=it.atk||0;def+=it.def||0;mgk+=it.mgk||0;mhp+=it.mhp||0;ls+=it.ls||0;crit+=it.crit||0;});(p.buffs||[]).forEach(b=>{str+=b.str||0;dex+=b.dex||0;atk+=b.atk||0;});if(p.status?.frozen)def=Math.round(def*.5);const totalMhp=c.bhp+vit*5+mhp+p.lv*8;const berserk=pb.berserk&&p.hp<totalMhp*.25;const totalSpd=c.spd+Math.floor(dex/2);return{atk:atk+str*1.5+p.lv*2+(berserk?pb.berserk:0),def:def+(vit*.5|0)+p.lv,mgk:mgk+int*1.5,mhp:totalMhp,ls,crit:Math.min(.65,crit+dex*.015+luk*.01),dodge:Math.min(.5,dodge+dex*.01),regen,thorns,str,dex,vit,luk,int,vis:VR+(pb.vis||0),spd:totalSpd};}
 function applyStatusToPlayer(p,type,power){const s={...(p.status||{})};if(type==='poison'){s.poison=4;s.poisonDmg=power||6;}if(type==='burn'){s.burn=3;s.burnDmg=power||8;}if(type==='freeze'){s.frozen=2;}return{...p,status:s};}
 function applyStatusToEnemy(e,type){const s={...(e.status||{})};if(type==='poison'){s.poison=4;s.poisonDmg=8;}if(type==='burn'){s.burn=3;s.burnDmg=10;}if(type==='freeze'){s.frozen=2;}return{...e,status:s};}
@@ -467,11 +539,11 @@ function pAtk(p,e,mode){const st=calcStats(p);let np={...p},ne={...e},msgs=[],fl
   msgs.push(`${e.n} is overwhelmed by anime energy!`);
 }const pSpd=calcStats(np).spd;np={...np,scd:Math.max(1,Math.round(12-pSpd))};}ne.hp-=dmg;return{p:np,e:ne,msgs,floats};}
 function eAtk(e,p){const st=calcStats(p);if(Math.random()<st.dodge)return{dmg:0,dodged:true};let dmg=Math.max(1,Math.round(e.atk-st.def+rnd(-3,4)));if(st.thorns>0){const tr=Math.round(dmg*st.thorns);return{dmg,dodged:false,thorns:tr};}return{dmg,dodged:false};}
-function initGame(name,cls){const cd=CLS[cls],dg=mkDungeon(1),st=mkStory();const p={name,cls,lv:1,xp:0,gold:0,hp:cd.bhp,eq:{weapon:null,armor:null,helmet:null,boots:null,gloves:null,ring:null,amulet:null},inv:[],buffs:[],scd:0,pb:{},status:{},goldMult:1,invCap:30,potMult:1};const dg2=updateVis(dg,dg.start,VR);const story=mkStory();
+function initGame(name,cls){const cd=CLS[cls],dg=mkDungeon(1),st=mkStory();const p={name,cls,lv:1,xp:0,gold:0,hp:cd.bhp,eq:{weapon:null,armor:null,helmet:null,boots:null,gloves:null,ring:null,amulet:null},inv:[],buffs:[],scd:0,rcd:0,ucd:0,ultCharge:0,pb:{},status:{},goldMult:1,invCap:999,potMult:1};const dg2=updateVis(dg,dg.start,VR);const story=mkStory();
   const floorObj1=FLOOR_OBJECTIVES(1);
   return{scr:S.STORY,floor:1,p,dg:dg2,pos:{...dg.start},story,
     floorObj:floorObj1,floorObjProg:0,floorObjDone:false,
-    activeQuest:null,questProg:0,questDone:false,itemsUsed:0,
+    activeQuest:null,questProg:0,questDone:false,itemsUsed:0,completedQuests:[],
     sq:[{t:STORY_FLOORS[1].title,tx:STORY_FLOORS[1].text(p.cls,name)}],log:['Adventure begins! WASD/Arrows=move | Q=skill | I=inventory'],turn:0,floats:[]};}
 function updateVis(dg,pos,vr){const vis=dg.vis.map(r=>[...r]);for(let y=0;y<DH;y++)for(let x=0;x<DW;x++)if(vis[y][x]===V.LIT)vis[y][x]=V.SEEN;for(let dy=-vr;dy<=vr;dy++)for(let dx=-vr;dx<=vr;dx++){const nx=pos.x+dx,ny=pos.y+dy;if(nx>=0&&nx<DW&&ny>=0&&ny<DH&&Math.sqrt(dx*dx+dy*dy)<=vr)vis[ny][nx]=V.LIT;}return{...dg,vis};}
 let GS={scr:S.TITLE};
@@ -592,7 +664,7 @@ function dispatch(action){
   render();
 }
 function processKill(np,e,f,msgs,floats){const gGain=Math.round(rnd(Math.floor(e.xp/3),e.xp)*(np.goldMult||1));np.xp+=e.xp;np.gold+=gGain;msgs.push(`${e.n} slain! +${e.xp}XP +${gGain}g`);if(e.boss)msgs.push(`BOSS DEFEATED!`);if(Math.random()<(e.boss?.7:.42)){const li=mkItem(f+(e.boss?3:0));np.inv=[...np.inv,li];msgs.push(`Loot: ${li.dn}`);}let pendingTalent=false;while(np.xp>=xpN(np.lv+1)){np.lv++;const s=calcStats(np);np.hp=Math.min(np.hp+40,s.mhp);msgs.push(`LEVEL UP! Lv.${np.lv}!`);pendingTalent=true;}return{np,pendingTalent};}
-function reduce(state,action){switch(action.type){case'START':return initGame(action.name,action.cls);case'RESTART':return{scr:S.TITLE};case'DISMISS':{const sq=state.sq.slice(1);return{...state,scr:sq.length?S.STORY:S.GAME,sq};}case'TOGGLE_INV':return{...state,scr:state.scr===S.INV?S.GAME:S.INV};case'OPEN_MERCHANT':return{...state,scr:S.MERCHANT};case'CLOSE_MERCHANT':return{...state,scr:S.GAME};case'BUY':{const it=state.dg.merchantInv[action.i];if(!it)return state;const cost=Math.round((it.val||20)*2);if(state.p.gold<cost)return{...state,log:['Not enough gold!',...state.log].slice(0,25)};return{...state,p:{...state.p,gold:state.p.gold-cost,inv:[...state.p.inv,it]},dg:{...state.dg,merchantInv:state.dg.merchantInv.filter((_,i)=>i!==action.i)},log:[`Bought ${it.dn} for ${cost}g`,...state.log].slice(0,25)};}case'SELL':{const it=state.p.inv[action.i];if(!it)return state;const val=Math.max(1,Math.round((it.val||10)/2));return{...state,p:{...state.p,gold:state.p.gold+val,inv:state.p.inv.filter((_,i)=>i!==action.i)},log:[`Sold ${it.dn} for ${val}g`,...state.log].slice(0,25)};}case'PICK_TALENT':{const talent=action.talent,np={...state.p,pb:{...state.p.pb}};talent.fn(np);return{...state,scr:S.GAME,p:np,log:[`Talent: ${talent.n}`,...state.log].slice(0,25),pendingTalents:null};}case'MOVE':{if(state.scr!==S.GAME)return state;const{dx,dy}=action;if(state.p.status?.frozen>0){let np=tickStatus({...state.p},[]);np.hp=Math.max(0,np.hp);if(np.hp<=0)return{...state,scr:S.DEATH,p:np};return{...state,p:np,dg:updateVis(state.dg,state.pos,calcStats(np).vis),log:['Frozen! Cannot move.',...state.log].slice(0,25),floats:[],turn:state.turn+1};}const nx=state.pos.x+dx,ny=state.pos.y+dy;if(nx<0||nx>=DW||ny<0||ny>=DH)return state;const tile=state.dg.tiles[ny]?.[nx];if(tile===T.WALL||tile===undefined)return state;let msgs=[],np={...state.p},dg={...state.dg},pos=state.pos,floor=state.floor,sq=[...state.sq],scr=S.GAME,floats=[],pendingTalents=null;const isMoving=dx!==0||dy!==0;const eidx=dg.enemies.findIndex(e=>e.x===nx&&e.y===ny&&e.hp>0);if(eidx!==-1){const{p:p2,e:e2,msgs:m,floats:fl}=pAtk(np,dg.enemies[eidx],'basic');np=p2;floats=[...floats,...fl];msgs.push(...m);let ne=[...dg.enemies];const{hp:eHp,statusDmg:sd}=tickEnemyStatus(e2);if(sd>0){msgs.push(`${e2.n}: ${sd} status`);floats.push({x:e2.x,y:e2.y,txt:sd,col:'#AA44AA'});}const finalE={...e2,hp:eHp};if(finalE.hp<=0){const killedEnemy=dg.enemies[eidx];
+function reduce(state,action){switch(action.type){case'START':return initGame(action.name,action.cls);case'RESTART':return{scr:S.TITLE};case'DISMISS':{const sq=state.sq.slice(1);return{...state,scr:sq.length?S.STORY:S.GAME,sq};}case'TOGGLE_INV':return{...state,scr:state.scr===S.INV?S.GAME:S.INV};case'OPEN_MERCHANT':return{...state,scr:S.MERCHANT};case'CLOSE_MERCHANT':return{...state,scr:S.GAME};case'OPEN_QUEST':return{...state,scr:S.QUEST};case'CLOSE_QUEST':return{...state,scr:S.GAME};case'BUY':{const it=state.dg.merchantInv[action.i];if(!it)return state;const cost=Math.round((it.val||20)*2);if(state.p.gold<cost)return{...state,log:['Not enough gold!',...state.log].slice(0,25)};return{...state,p:{...state.p,gold:state.p.gold-cost,inv:[...state.p.inv,it]},dg:{...state.dg,merchantInv:state.dg.merchantInv.filter((_,i)=>i!==action.i)},log:[`Bought ${it.dn} for ${cost}g`,...state.log].slice(0,25)};}case'SELL':{const it=state.p.inv[action.i];if(!it)return state;const val=Math.max(1,Math.round((it.val||10)/2));return{...state,p:{...state.p,gold:state.p.gold+val,inv:state.p.inv.filter((_,i)=>i!==action.i)},log:[`Sold ${it.dn} for ${val}g`,...state.log].slice(0,25)};}case'PICK_TALENT':{const talent=action.talent,np={...state.p,pb:{...state.p.pb}};talent.fn(np);return{...state,scr:S.GAME,p:np,log:[`Talent: ${talent.n}`,...state.log].slice(0,25),pendingTalents:null};}case'MOVE':{if(state.scr!==S.GAME)return state;const{dx,dy}=action;if(state.p.status?.frozen>0){let np=tickStatus({...state.p},[]);np.hp=Math.max(0,np.hp);if(np.hp<=0)return{...state,scr:S.DEATH,p:np};return{...state,p:np,dg:updateVis(state.dg,state.pos,calcStats(np).vis),log:['Frozen! Cannot move.',...state.log].slice(0,25),floats:[],turn:state.turn+1};}const nx=state.pos.x+dx,ny=state.pos.y+dy;if(nx<0||nx>=DW||ny<0||ny>=DH)return state;const tile=state.dg.tiles[ny]?.[nx];if(tile===T.WALL||tile===undefined)return state;let msgs=[],np={...state.p},dg={...state.dg},pos=state.pos,floor=state.floor,sq=[...state.sq],scr=S.GAME,floats=[],pendingTalents=null;const isMoving=dx!==0||dy!==0;const eidx=dg.enemies.findIndex(e=>e.x===nx&&e.y===ny&&e.hp>0);if(eidx!==-1){const{p:p2,e:e2,msgs:m,floats:fl}=pAtk(np,dg.enemies[eidx],'basic');np=p2;floats=[...floats,...fl];msgs.push(...m);let ne=[...dg.enemies];const{hp:eHp,statusDmg:sd}=tickEnemyStatus(e2);if(sd>0){msgs.push(`${e2.n}: ${sd} status`);floats.push({x:e2.x,y:e2.y,txt:sd,col:'#AA44AA'});}const finalE={...e2,hp:eHp};if(finalE.hp<=0){const killedEnemy=dg.enemies[eidx];
       const{np:np2,pendingTalent}=processKill(np,killedEnemy,floor,msgs,floats);np=np2;ne.splice(eidx,1);
       // ── Quest kill tracking ──
       const fo=state.floorObj;let fop=state.floorObjProg,fod=state.floorObjDone;
@@ -621,7 +693,7 @@ function reduce(state,action){switch(action.type){case'START':return initGame(ac
     const adjNpc=dg.npcs&&dg.npcs.find(n=>n.hp!==0&&Math.abs(n.x-nx)<=1&&Math.abs(n.y-ny)<=1);
     if(adjNpc&&!adjNpc.talked){msgs.push(`Talk to ${adjNpc.name}: press [E] / tap TALK`);}}
 }
-np=tickStatus(np,msgs);if(np.hp<=0)return{...state,scr:S.DEATH,p:np,log:[...msgs,...state.log].slice(0,30)};if(np.scd>0)np.scd--;const maxHp=calcStats(np).mhp;if(np.hp>maxHp)np.hp=maxHp;dg=updateVis(dg,pos,calcStats(np).vis);// ── Explore objective tracking ─────────────────────────────────────────────
+np=tickStatus(np,msgs);if(np.hp<=0)return{...state,scr:S.DEATH,p:np,log:[...msgs,...state.log].slice(0,30)};if(np.scd>0)np.scd--;if(np.rcd>0)np.rcd--;if(np.ucd>0)np.ucd--;const maxHp=calcStats(np).mhp;if(np.hp>maxHp)np.hp=maxHp;dg=updateVis(dg,pos,calcStats(np).vis);// ── Explore objective tracking ─────────────────────────────────────────────
   let finFop=state.floorObjProg,finFod=state.floorObjDone;
   if(state.floorObj&&state.floorObj.type===QT.EXPLORE&&!state.floorObjDone){
     // Count floor tiles that are SEEN or LIT
@@ -645,6 +717,104 @@ np=tickStatus(np,msgs);if(np.hp<=0)return{...state,scr:S.DEATH,p:np,log:[...msgs
     finFop=state.floorObjProg;finFod=state.floorObjDone;
   }
   return{...state,scr:pendingTalents?S.TALENT:scr,floor,p:np,dg,pos,sq,floorObjProg:finFop,floorObjDone:finFod,questProg:state.questProg,questDone:state.questDone,activeQuest:state.activeQuest,itemsUsed:state.itemsUsed,log:[...msgs,...state.log].slice(0,25),turn:state.turn+1,floats,pendingTalents};}
+case'NORMAL_ATK':
+case'RANGED_ATK':
+case'ULT_ATK':{
+  if(state.scr!==S.GAME)return state;
+  const atk=ATTACKS[state.p.cls];
+  const isRanged=action.type==='RANGED_ATK';
+  const isUlt=action.type==='ULT_ATK';
+  const atkDef=isUlt?atk.ult:isRanged?atk.ranged:atk.normal;
+
+  // Cooldown check
+  if(isUlt){
+    if(state.p.ultCharge<atkDef.chargeNeeded)
+      return{...state,log:[`Ult not ready! ${state.p.ultCharge}/${atkDef.chargeNeeded} charge`,...state.log].slice(0,25)};
+  }else if(isRanged&&state.p.rcd>0){
+    return{...state,log:[`${atkDef.label} recharging...`,...state.log].slice(0,25)};
+  }else if(!isRanged&&!isUlt&&state.p.scd>0){
+    return{...state,log:[`Attack recharging...`,...state.log].slice(0,25)};
+  }
+
+  const range=atkDef.range;
+  const targets=state.dg.enemies.filter(e=>e.hp>0&&cdist(e,state.pos)<=range)
+    .sort((a,b)=>cdist(a,state.pos)-cdist(b,state.pos));
+  if(!targets.length)
+    return{...state,log:[range>1?'No target in range!':'No adjacent enemy!',...state.log].slice(0,25)};
+
+  const st2=calcStats(state.p);
+  const primaryTarget=targets[0];
+  const ti=state.dg.enemies.indexOf(primaryTarget);
+  const result=atkDef.fn(state.p,primaryTarget,st2);
+
+  let np={...state.p};
+  let ne=[...state.dg.enemies];
+  let msgs=[result.msg];
+  let floats=[{x:primaryTarget.x,y:primaryTarget.y,txt:result.dmg,col:result.col}];
+  let pendingTalents=null,scr=S.GAME;
+
+  // Apply AOE if ult
+  const aoeTargets=result.aoe?targets.slice(0,result.aoe):[targets[0]];
+  let killed=[];
+  aoeTargets.forEach(tgt=>{
+    const idx2=ne.findIndex(e=>e.id===tgt.id);
+    if(idx2===-1)return;
+    let te={...ne[idx2],hp:ne[idx2].hp-result.dmg};
+    if(result.status)te=applyStatusToEnemy(te,result.status);
+    if(te.hp<=0){
+      const{np:np2,pendingTalent}=processKill(np,tgt,state.floor,msgs,floats);
+      np=np2;ne.splice(idx2,1);killed.push(tgt);
+      if(pendingTalent){pendingTalents=pickTalents();scr=S.TALENT;}
+    }else{
+      ne[idx2]=te;
+      // Counter-attack from primary target only
+      if(idx2===ti){
+        const{dmg,dodged}=eAtk(te,np);
+        if(!dodged){np.hp-=dmg;msgs.push(`${te.n}: -${dmg} HP`);floats.push({x:state.pos.x,y:state.pos.y,txt:`-${dmg}`,col:'#FF4444'});}
+        else msgs.push('Dodged!');
+      }
+    }
+  });
+
+  // Quest/obj kill tracking
+  let fop=state.floorObjProg,fod=state.floorObjDone;
+  let qp=state.questProg,qd=state.questDone;
+  killed.forEach(killedE=>{
+    const fo=state.floorObj;
+    if(fo&&fo.type===QT.KILL&&!fod){
+      const m=fo.target==='any'||fo.target==='boss'&&killedE.boss||(killedE.n||'').toLowerCase().includes(fo.target);
+      if(m){fop=Math.min(fo.count,fop+1);if(fop>=fo.count){fod=true;msgs.push(`Floor objective complete! +${fo.reward.gold}g`);np.gold+=fo.reward.gold;np.xp+=fo.reward.xp||0;}}
+    }
+    const aq=state.activeQuest;
+    if(aq&&aq.type===QT.KILL&&!qd){
+      const qm=aq.target==='any'||(killedE.n||'').toLowerCase().includes(aq.target);
+      if(qm){qp=Math.min(aq.count,qp+1);if(qp>=aq.count){qd=true;msgs.push('Quest objective complete! Talk to the quest giver.');}}
+    }
+  });
+
+  // Lifesteal
+  if(st2.ls>0){const lh=Math.round(result.dmg*st2.ls);if(lh>0)np.hp=Math.min(np.hp+lh,st2.mhp);}
+
+  // Apply cooldown / charge
+  if(isUlt){
+    np.ultCharge=0;np.ucd=8;
+  }else if(isRanged){
+    np.rcd=atkDef.cd;
+    np.ultCharge=Math.min(atkDef.chargeNeeded||5,(np.ultCharge||0)+1);
+  }else{
+    np.scd=atkDef.cd;
+    np.ultCharge=Math.min(ATTACKS[np.cls].ult.chargeNeeded,(np.ultCharge||0)+1);
+  }
+
+  np=tickStatus(np,msgs);
+  if(np.hp<=0)return{...state,scr:S.DEATH,p:np,log:[...msgs,...state.log].slice(0,30)};
+  if(np.scd>0)np.scd--;
+  if(np.rcd>0)np.rcd--;
+  const dg2=updateVis({...state.dg,enemies:ne},state.pos,calcStats(np).vis);
+  return{...state,scr,p:np,dg:dg2,floorObjProg:fop,floorObjDone:fod,questProg:qp,
+    questDone:state.questDone||qd,activeQuest:state.activeQuest,
+    log:[...msgs,...state.log].slice(0,25),turn:state.turn+1,floats,pendingTalents};
+}
 case'SKILL':{if(state.scr!==S.GAME)return state;if(state.p.scd>0)return{...state,log:[`Ability recharging...`,...state.log].slice(0,25)};const SKILL_RANGE=state.p.cls==='tact'?7:1;const adj=state.dg.enemies.filter(e=>e.hp>0&&cdist(e,state.pos)<=SKILL_RANGE).sort((a,b)=>cdist(a,state.pos)-cdist(b,state.pos));if(!adj.length){const msg=state.p.cls==='tact'?'No target in drone range!':'No adjacent enemy!';return{...state,log:[msg,...state.log].slice(0,25)};}const ti=state.dg.enemies.indexOf(adj[0]);const{p:p2,e:e2,msgs:m,floats:fl}=pAtk({...state.p},state.dg.enemies[ti],'skill');let np={...p2},ne=[...state.dg.enemies],msgs=[...m],floats=[...fl],pendingTalents=null,scr=S.GAME;if(e2.hp<=0){
     const killedE=state.dg.enemies[ti];
     const{np:np2,pendingTalent}=processKill(np,killedE,state.floor,msgs,floats);np=np2;ne.splice(ti,1);
@@ -743,7 +913,8 @@ case'COMPLETE_QUEST':{
   const compSq=[{t:q.title+' — Complete!',tx:q.complete_text,isNpc:true,npcIcon:'✅',
     reward:q.reward,questComplete:true},...state.sq];
   const msgs=[`Quest complete: ${q.title}! +${q.reward.gold||0}g +${q.reward.xp||0}XP${q.reward.item?' +item':''}`];
-  return{...state,p:np,sq:compSq,scr:S.STORY,activeQuest:null,questDone:true,
+  const newCompleted=[...(state.completedQuests||[]),{...q,completedFloor:state.floor,completedAt:Date.now()}];
+  return{...state,p:np,sq:compSq,scr:S.STORY,activeQuest:null,questDone:true,completedQuests:newCompleted,
     log:[...msgs,...state.log].slice(0,25)};
 }
 case'TALK_ADJ':{
@@ -784,7 +955,7 @@ case'ASCEND':{
   if(floor2===50&&!state.storyComplete){
     sq2=[...sq2,{t:STORY_FLOORS[50].title,tx:STORY_FLOORS[50].text(state.p.cls,state.p.name),isEnding:true}];scr2=S.STORY;
   }
-  return{...state,scr:scr2,floor:floor2,dg:dg2,pos:pos2,sq:sq2,story:state.story,floorObj:floorObj2,floorObjProg:0,floorObjDone:false,activeQuest:null,questProg:0,questDone:false,itemsUsed:0,log:[...msgs2,...state.log].slice(0,25),storyComplete:state.storyComplete||(floor2>=50)};
+  return{...state,scr:scr2,floor:floor2,dg:dg2,pos:pos2,sq:sq2,story:state.story,floorObj:floorObj2,floorObjProg:0,floorObjDone:false,activeQuest:null,questProg:0,questDone:false,itemsUsed:0,completedQuests:state.completedQuests||[],log:[...msgs2,...state.log].slice(0,25),storyComplete:state.storyComplete||(floor2>=50)};
 }
 default:return state;}}
 const canvas=document.createElement('canvas');canvas.style.cssText='display:block;image-rendering:pixelated;image-rendering:crisp-edges;flex-shrink:0;';
@@ -1697,7 +1868,136 @@ function drawLargeMap(ctx,dg,pos,floor){
   });
 }
 
-function render(){const root=document.getElementById('root');if(!root)return;root.innerHTML='';root.style.cssText='display:flex;flex-direction:column;height:100vh;width:100%;overflow:hidden;background:#07070f;';const st=GS;if(st.scr===S.TITLE)renderTitle(root);else if(st.scr===S.STORY)renderStory(root,st);else if(st.scr===S.GAME)renderGame(root,st);else if(st.scr===S.INV)renderInv(root,st);else if(st.scr===S.MERCHANT)renderMerchant(root,st);else if(st.scr===S.TALENT)renderTalent(root,st);else if(st.scr===S.DEATH)renderDeath(root,st);else if(st.scr===S.STAIRS)renderStairs(root,st);}
+function renderQuestLog(root,st){
+  const div=document.createElement('div');
+  div.style.cssText='display:flex;flex-direction:column;height:100%;background:#0a0810;color:#ddd;font-family:monospace;';
+
+  // Header
+  const hdr=document.createElement('div');
+  hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#07060f;border-bottom:1.5px solid #2a2040;flex-shrink:0;';
+  hdr.innerHTML=`<div style="font-size:18px;font-weight:bold;color:#CC9944;">📜 QUEST JOURNAL</div>`;
+  const closeBtn=document.createElement('button');
+  closeBtn.textContent='✕ CLOSE';
+  closeBtn.style.cssText='background:#1a1020;border:1px solid #3a2a50;border-radius:7px;color:#888;padding:6px 14px;cursor:pointer;font-family:monospace;font-size:11px;';
+  closeBtn.addEventListener('click',()=>dispatch({type:'CLOSE_QUEST'}));
+  hdr.appendChild(closeBtn);div.appendChild(hdr);
+
+  const body=document.createElement('div');
+  body.style.cssText='flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;';
+
+  // Monster emoji lookup for kill quests
+  const monsterEmoji={rat:'🐀',goblin:'👺',skeleton:'💀',orc:'👹',dmage:'🧙',troll:'🧌',vampire:'🧛',demon:'😈',lich:'☠️',dragon:'🐉',any:'⚔️',boss:'👑',elite:'💪'};
+
+  // ── Floor objective ─────────────────────────────────────────────────────
+  const fo=st.floorObj;
+  if(fo){
+    const card=document.createElement('div');
+    card.style.cssText=`padding:14px;border-radius:10px;background:#12100a;border:1.5px solid ${st.floorObjDone?'#44aa44':'#5a4a1a'};`;
+    const prog=Math.min(fo.count||1,st.floorObjProg||0);
+    const total=fo.count||1;
+    const pct=fo.type==='explore'?Math.min(100,st.floorObjProg||0):Math.round(prog/total*100);
+    const monster=monsterEmoji[fo.target]||'⚔️';
+    card.innerHTML=`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div style="font-size:28px;">${fo.type==='explore'?'🗺':fo.type==='kill'?monster:'🔑'}</div>
+        <div>
+          <div style="font-size:10px;color:#CC9944;letter-spacing:2px;font-weight:bold;">FLOOR ${st.floor} OBJECTIVE</div>
+          <div style="font-size:14px;color:${st.floorObjDone?'#44FF88':'#eee'};font-weight:bold;margin-top:2px;">${fo.label}</div>
+        </div>
+        ${st.floorObjDone?'<div style="margin-left:auto;font-size:22px;">✅</div>':''}
+      </div>
+      ${!st.floorObjDone?`
+      <div style="background:#1a1800;border-radius:6px;height:8px;width:100%;margin-bottom:6px;">
+        <div style="background:#CC9944;height:8px;border-radius:6px;width:${pct}%;transition:width .3s;"></div>
+      </div>
+      <div style="font-size:10px;color:#888;">${fo.type==='explore'?`${pct}% explored`:`${prog} / ${total} ${fo.target||''} eliminated`}</div>`:''}
+      <div style="font-size:10px;color:#6a6a44;margin-top:6px;">Reward: ${fo.reward.gold}g · ${fo.reward.xp||0}XP</div>`;
+    body.appendChild(card);
+  }
+
+  // ── Active NPC quest ────────────────────────────────────────────────────
+  const aq=st.activeQuest;
+  if(aq){
+    const card=document.createElement('div');
+    const qProg=Math.min(aq.count||1,st.questProg||0);
+    const qTotal=aq.count||1;
+    const qPct=Math.round(qProg/qTotal*100);
+    const qDone=st.questDone;
+    const qMonster=monsterEmoji[aq.target]||'⚔️';
+    card.style.cssText=`padding:14px;border-radius:10px;background:#100a18;border:1.5px solid ${qDone?'#44aa44':'#5a2a88'};`;
+    card.innerHTML=`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div style="font-size:32px;">${qMonster}</div>
+        <div style="flex:1;">
+          <div style="font-size:10px;color:#CC88FF;letter-spacing:2px;font-weight:bold;">ACTIVE QUEST</div>
+          <div style="font-size:14px;color:${qDone?'#44FF88':'#eee'};font-weight:bold;margin-top:2px;">${aq.title}</div>
+        </div>
+        ${qDone?'<div style="font-size:22px;">✅</div>':''}
+      </div>
+      <div style="font-size:11px;color:#aaa;line-height:1.6;margin-bottom:8px;">${aq.desc}</div>
+      ${!qDone&&aq.count?`
+      <div style="background:#1a0a2a;border-radius:6px;height:8px;width:100%;margin-bottom:6px;">
+        <div style="background:#CC88FF;height:8px;border-radius:6px;width:${qPct}%;"></div>
+      </div>
+      <div style="font-size:10px;color:#888;">${qProg} / ${qTotal} ${aq.target||''} defeated</div>`:''}
+      ${qDone?`<div style="font-size:11px;color:#44FF88;font-weight:bold;">✓ Return to quest giver to collect reward!</div>`:''}
+      <div style="font-size:10px;color:#6a5a44;margin-top:6px;">Reward: ${aq.reward?.gold||0}g · ${aq.reward?.xp||0}XP${aq.reward?.item?' · Item':''}</div>`;
+    body.appendChild(card);
+  }
+
+  // ── Ult charge status ────────────────────────────────────────────────────
+  const atk2=ATTACKS[st.p.cls];
+  const ultChg2=st.p.ultCharge||0;
+  const ultMax2=atk2.ult.chargeNeeded||5;
+  const ultReady2=ultChg2>=ultMax2;
+  const ultCard=document.createElement('div');
+  ultCard.style.cssText=`padding:14px;border-radius:10px;background:#0c0c0a;border:1.5px solid ${ultReady2?'#FFD700':'#3a3820'};`;
+  const chargeBar=Array.from({length:ultMax2},(_,i)=>`<div style="flex:1;height:16px;background:${i<ultChg2?'#FFD700':'#1a1800'};border-radius:3px;border:1px solid #2a2800;"></div>`).join('');
+  ultCard.innerHTML=`
+    <div style="font-size:10px;color:${ultReady2?'#FFD700':'#888'};letter-spacing:2px;font-weight:bold;margin-bottom:6px;">ULTIMATE CHARGE</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+      <div style="font-size:28px;">${atk2.ult.icon}</div>
+      <div>
+        <div style="font-size:13px;color:${ultReady2?'#FFD700':'#ccc'};font-weight:bold;">${atk2.ult.label}</div>
+        <div style="font-size:10px;color:#888;">${ultReady2?'READY TO UNLEASH!':ultChg2+'/'+ultMax2+' — attack enemies to charge'}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:4px;">${chargeBar}</div>`;
+  body.appendChild(ultCard);
+
+  // ── Completed quests history ─────────────────────────────────────────────
+  const completed=st.completedQuests||[];
+  if(completed.length>0){
+    const secLabel=document.createElement('div');
+    secLabel.style.cssText='font-size:10px;color:#556;letter-spacing:2px;font-weight:bold;margin-top:4px;padding-left:8px;border-left:2px solid #334;';
+    secLabel.textContent='COMPLETED QUESTS';
+    body.appendChild(secLabel);
+    [...completed].reverse().forEach(q=>{
+      const qc=document.createElement('div');
+      qc.style.cssText='padding:12px;border-radius:10px;background:#0c100c;border:1px solid #1a2a1a;opacity:0.85;';
+      qc.innerHTML=`
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div style="font-size:10px;color:#448844;letter-spacing:1px;font-weight:bold;">✓ COMPLETED · Floor ${q.completedFloor||'?'}</div>
+          <div style="font-size:12px;color:#88cc88;font-weight:bold;flex:1;">${q.title}</div>
+        </div>
+        <div style="font-size:11px;color:#557755;line-height:1.5;">${q.complete_text||q.desc||''}</div>
+        <div style="font-size:10px;color:#335533;margin-top:4px;">Reward collected: ${q.reward?.gold||0}g · ${q.reward?.xp||0}XP${q.reward?.item?' · Item':''}</div>`;
+      body.appendChild(qc);
+    });
+  }
+
+  // Empty state
+  if(!fo&&!aq&&!completed.length){
+    const empty=document.createElement('div');
+    empty.style.cssText='color:#444;font-size:13px;text-align:center;margin-top:40px;';
+    empty.textContent='No active objectives. Explore the dungeon!';
+    body.appendChild(empty);
+  }
+
+  div.appendChild(body);root.appendChild(div);
+}
+
+function render(){const root=document.getElementById('root');if(!root)return;root.innerHTML='';root.style.cssText='display:flex;flex-direction:column;height:100vh;width:100%;overflow:hidden;background:#07070f;';const st=GS;if(st.scr===S.TITLE)renderTitle(root);else if(st.scr===S.STORY)renderStory(root,st);else if(st.scr===S.GAME)renderGame(root,st);else if(st.scr===S.INV)renderInv(root,st);else if(st.scr===S.MERCHANT)renderMerchant(root,st);else if(st.scr===S.TALENT)renderTalent(root,st);else if(st.scr===S.DEATH)renderDeath(root,st);else if(st.scr===S.QUEST)renderQuestLog(root,st);else if(st.scr===S.STAIRS)renderStairs(root,st);}
 function renderTitle(root){const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px 16px;gap:12px;overflow-y:auto;';let selCls='doom',pName='';div.innerHTML='<div style="text-align:center;"><div style="font-size:24px;font-weight:bold;color:#FFD700;letter-spacing:2px;">DUNGEON DESCENT</div><div style="font-size:9px;color:#444;letter-spacing:3px;margin-top:3px;">ENHANCED EDITION</div></div><div style="width:100%;max-width:320px;"><div style="font-size:11px;color:#666;margin-bottom:5px;">Your name:</div><input id="pname" type="text" maxlength="20" placeholder="Hero name..." style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:9px 11px;color:#fff;font-size:14px;font-family:monospace;"></div><div style="width:100%;max-width:320px;"><div style="font-size:11px;color:#666;margin-bottom:6px;">Choose class:</div><div id="cls-list"></div></div><button id="start-btn" style="padding:11px 36px;background:#FFD700;color:#000;border:none;border-radius:7px;font-size:14px;font-weight:bold;cursor:pointer;font-family:monospace;">BEGIN DESCENT</button><div style="font-size:9px;color:#333;text-align:center;line-height:1.7;">Move: Arrows/WASD | Skill: Q | Inventory: I | Wait: Space</div>';root.appendChild(div);const ni=div.querySelector('#pname');ni.addEventListener('input',e=>{pName=e.target.value;});const cl=div.querySelector('#cls-list');const cards={};Object.entries(CLS).forEach(([k,c])=>{const card=document.createElement('div');card.style.cssText=`border:2px solid ${k==='doom'?c.col:'#333'};border-radius:7px;padding:9px 12px;margin-bottom:7px;cursor:pointer;background:${k==='doom'?c.col+'22':'#111'};`;card.innerHTML=`<div style="font-size:13px;font-weight:bold;color:${c.col};">${c.n}</div><div style="font-size:10px;color:#777;margin-top:2px;">${c.desc}</div>`;card.addEventListener('click',()=>{selCls=k;Object.entries(cards).forEach(([ck,cv])=>{const cc=CLS[ck];cv.style.borderColor=ck===k?cc.col:'#333';cv.style.background=ck===k?cc.col+'22':'#111';});});cards[k]=card;cl.appendChild(card);});div.querySelector('#start-btn').addEventListener('click',()=>{if((pName||'').trim()){AUD.ctx();if(_audSettings.music)AUD.playMusic('explore');dispatch({type:'START',name:pName.trim(),cls:selCls});initJoystick();}});}
 function renderStory(root,st){const ev=st.sq[0];if(!ev)return;
 const div=document.createElement('div');div.style.cssText='display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;padding:28px 20px;background:#050510;';div.innerHTML=`<div style="max-width:320px;text-align:center;"><div style="font-size:9px;color:${ev.isNpc?'#44AA44':'#333'};letter-spacing:4px;margin-bottom:12px;">${ev.isNpc?'DIALOGUE':'CHAPTER'}</div>${ev.npcIcon?`<div style='font-size:36px;margin-bottom:8px;'>${ev.npcIcon}</div>`:''}<div style="font-size:18px;color:#FFD700;font-weight:bold;margin-bottom:16px;line-height:1.3;">${ev.t}</div><div style="font-size:12px;line-height:1.9;color:#AAA;margin-bottom:28px;">${ev.tx}</div><button id="cont" style="padding:10px 28px;background:#FFD700;color:#000;border:none;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;font-family:monospace;">CONTINUE</button></div>`;root.appendChild(div);const ev2=GS.sq[0];
@@ -1767,9 +2067,12 @@ cvWrap.style.position='relative';
 const actionBar=document.createElement('div');
 actionBar.style.cssText='display:flex;flex-direction:column;gap:5px;justify-content:center;flex-shrink:0;padding:4px 6px;';
 
-const skReady2=p.scd===0;
-const skIcon={doom:'🍕',camp:'📹',tact:'🚁',anime:'🐱'}[p.cls]||'★';
-const skLabel={doom:'Pizza',camp:'Viral',tact:'Drone',anime:'Senpai'}[p.cls];
+const atks2=ATTACKS[p.cls];
+const nReady=p.scd===0;
+const rReady=p.rcd===0;
+const ultReady=p.ultCharge>=(atks2.ult.chargeNeeded||5);
+const ultChg=Math.min(p.ultCharge||0,atks2.ult.chargeNeeded||5);
+const ultMax=atks2.ult.chargeNeeded||5;
 const firstPotion=p.inv.findIndex(it=>it.hp>0);
 const hasPot=firstPotion!==-1;
 
@@ -1778,28 +2081,37 @@ const canCompleteQuest=adjNpc2&&GS.activeQuest&&GS.questProg>=(GS.activeQuest.co
 const actionDefs=[
   ...(canCompleteQuest?[{label:'✓',sub:'COMPLETE',
    bg:'rgba(20,60,5,0.95)',border:'#FFD700',col:'#FFD700',
-   action:()=>dispatch({type:'COMPLETE_QUEST'}),
-   badge:'Quest!'}]:[]),
+   action:()=>dispatch({type:'COMPLETE_QUEST'}),badge:'Quest!'}]:[]),
   ...(adjNpc2&&!canCompleteQuest?[{label:adjNpc2.icon,sub:'TALK',
    bg:'rgba(10,40,10,0.92)',border:'#44BB44',col:'#88FF88',
-   action:()=>dispatch({type:'TALK',id:adjNpc2.id}),
-   badge:adjNpc2.name}]:[]),
-  {label:skIcon,sub:skReady2?'⚡ READY':'⏳ recharging',
-   bg:skReady2?'rgba(44,18,80,0.92)':'rgba(8,8,20,0.85)',
-   border:skReady2?'#7a20cc':'#2a2a44',
-   col:skReady2?'#CC88FF':'#444',
-   action:()=>dispatch({type:'SKILL'}),
-   badge:skLabel},
+   action:()=>dispatch({type:'TALK',id:adjNpc2.id}),badge:adjNpc2.name}]:[]),
+  // Normal attack
+  {label:atks2.normal.icon,sub:nReady?'READY':`CD:${p.scd}`,
+   bg:nReady?'rgba(30,15,5,0.92)':'rgba(8,8,20,0.85)',
+   border:nReady?'#CC6622':'#2a2a44',col:nReady?'#FF9944':'#444',
+   action:()=>dispatch({type:'NORMAL_ATK'}),badge:atks2.normal.label},
+  // Ranged attack
+  {label:atks2.ranged.icon,sub:rReady?'READY':`CD:${p.rcd}`,
+   bg:rReady?'rgba(5,20,30,0.92)':'rgba(8,8,20,0.85)',
+   border:rReady?'#2288CC':'#2a2a44',col:rReady?'#44CCFF':'#444',
+   action:()=>dispatch({type:'RANGED_ATK'}),badge:atks2.ranged.label},
+  // Ultimate — shows charge bar
+  {label:atks2.ult.icon,
+   sub:ultReady?'UNLEASH!':`${ultChg}/${ultMax}⚡`,
+   bg:ultReady?'rgba(40,30,5,0.96)':'rgba(8,8,20,0.85)',
+   border:ultReady?'#FFD700':'#2a2a44',col:ultReady?'#FFD700':'#888',
+   action:()=>dispatch({type:'ULT_ATK'}),badge:atks2.ult.label},
+  // Potion
   {label:'🧪',sub:hasPot?`${p.inv.filter(i=>i.hp>0).length} left`:'none',
    bg:hasPot?'rgba(40,10,10,0.9)':'rgba(8,8,20,0.85)',
-   border:hasPot?'#882222':'#2a2a44',
-   col:hasPot?'#FF8888':'#444',
-   action:()=>{if(hasPot)dispatch({type:'USE',i:firstPotion});},
-   badge:'Potion'},
-  {label:'🗺',sub:'map',
-   bg:'rgba(8,18,30,0.88)',border:'#1a3a5a',col:'#4a9aCC',
-   action:()=>{showMap=!showMap;},
-   badge:'Map'},
+   border:hasPot?'#882222':'#2a2a44',col:hasPot?'#FF8888':'#444',
+   action:()=>{if(hasPot)dispatch({type:'USE',i:firstPotion});},badge:'Potion'},
+  // Map
+  {label:'🗺',sub:'map',bg:'rgba(8,18,30,0.88)',border:'#1a3a5a',col:'#4a9aCC',
+   action:()=>{showMap=!showMap;},badge:'Map'},
+  // Quest log
+  {label:'📜',sub:'quests',bg:'rgba(18,12,5,0.88)',border:'#6a4a1a',col:'#CC9944',
+   action:()=>dispatch({type:'OPEN_QUEST'}),badge:'Journal'},
 ];
 
 actionDefs.forEach(def=>{
@@ -1869,9 +2181,15 @@ const ctrl=document.createElement('div');
 ctrl.style.cssText='display:flex;align-items:center;justify-content:flex-end;padding:4px 12px;background:#0a0a18;border-top:1px solid #1a1a30;flex-shrink:0;height:44px;';
 const invBtn=document.createElement('button');
 invBtn.style.cssText='padding:7px 16px;border-radius:8px;font-size:11px;text-align:center;cursor:pointer;background:#1a2a1a;border:1.5px solid #2a4a2a;color:#8BC34A;font-family:monospace;font-weight:bold;';
-invBtn.innerHTML=`🎒 BAG <span style="color:#5D8A4E;font-weight:normal;">${p.inv.length}/${p.invCap}</span>`;
+invBtn.innerHTML=`🎒 BAG`;
 invBtn.addEventListener('pointerdown',e=>{e.preventDefault();selInv=-1;dispatch({type:'TOGGLE_INV'});});
+
+const questBtn=document.createElement('button');
+questBtn.style.cssText='padding:7px 14px;border-radius:8px;font-size:11px;text-align:center;cursor:pointer;background:#1a1020;border:1.5px solid #4a2a6a;color:#CC9944;font-family:monospace;font-weight:bold;margin-left:6px;';
+questBtn.innerHTML='📜 QUESTS';
+questBtn.addEventListener('pointerdown',e=>{e.preventDefault();dispatch({type:'OPEN_QUEST'});});
 ctrl.appendChild(invBtn);
+ctrl.appendChild(questBtn);
 
 // Audio toggle buttons
 const audBtns=document.createElement('div');
@@ -1938,7 +2256,7 @@ function renderInv(root,st){
   hdr.innerHTML=`
     <div>
       <div style="font-size:16px;font-weight:bold;color:${C.goldBright};letter-spacing:1px;">⚔ INVENTORY</div>
-      <div style="font-size:10px;color:${C.textSecond};margin-top:2px;">${p.name} · Lv.${p.lv} · ${p.inv.length}/${p.invCap} items · <span style="color:${C.gold};">💰 ${p.gold}g</span></div>
+      <div style="font-size:10px;color:${C.textSecond};margin-top:2px;">${p.name} · Lv.${p.lv} · ${p.inv.length} items · <span style="color:${C.gold};">💰 ${p.gold}g</span></div>
     </div>`;
   const closeBtn=document.createElement('button');
   closeBtn.textContent='✕ CLOSE';
@@ -2030,6 +2348,7 @@ function renderInv(root,st){
   // ════════════════════════════════════════════════════════════════════
   else if(activeTab==='bag'){
     const scr=document.createElement('div');
+    scr.id='inv-bag-scr';
     scr.style.cssText=`flex:1;overflow-y:auto;padding:10px;background:${C.base};`;
 
     if(!p.inv.length){
@@ -2142,9 +2461,19 @@ function renderInv(root,st){
           card.appendChild(btns);
         }
 
-        card.addEventListener('click',()=>{selInv=isSel?-1:i;window._invTab='bag';render();});
+        card.addEventListener('click',()=>{
+          const sc=scr.scrollTop;
+          selInv=isSel?-1:i;window._invTab='bag';
+          window._invBagScroll=sc;
+          render();
+        });
         scr.appendChild(card);
       });
+    });
+    // Restore scroll position after re-render
+    requestAnimationFrame(()=>{
+      const sc=document.querySelector('#inv-bag-scr');
+      if(sc&&window._invBagScroll!=null){sc.scrollTop=window._invBagScroll;window._invBagScroll=null;}
     });
     body.appendChild(scr);
   }
